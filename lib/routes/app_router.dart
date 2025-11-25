@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/route_constants.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
+import '../../features/auth/presentation/pages/onboarding_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/services/presentation/pages/services_page.dart';
@@ -21,6 +22,12 @@ class AppRouter {
       GoRoute(
         path: RouteConstants.splash,
         builder: (context, state) => const SplashPage(),
+      ),
+      
+      // Onboarding
+      GoRoute(
+        path: RouteConstants.onboarding,
+        builder: (context, state) => const OnboardingPage(),
       ),
       
       // Auth Routes

@@ -48,7 +48,8 @@ class RouteGuards {
         path == RouteConstants.register ||
         path == RouteConstants.forgotPassword ||
         path == RouteConstants.resetPassword ||
-        path == RouteConstants.splash;
+        path == RouteConstants.splash ||
+        path == RouteConstants.onboarding;
   }
   
   // Check if user is admin

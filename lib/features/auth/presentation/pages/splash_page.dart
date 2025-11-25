@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/route_constants.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/storage/local_storage.dart';
 import '../../../../core/theme/colors.dart';
 
 class SplashPage extends StatefulWidget {
@@ -69,9 +70,16 @@ class _SplashPageState extends State<SplashPage>
     
     if (!mounted) return;
     
-    // Navigate based on authentication status
+    // Check if onboarding is completed
+    final onboardingCompleted = await LocalStorage.getBool('onboarding_completed') ?? false;
+    
+    if (!mounted) return;
+    
+    // Navigate based on authentication and onboarding status
     if (isAuthenticated) {
       context.go(RouteConstants.home);
+    } else if (!onboardingCompleted) {
+      context.go(RouteConstants.onboarding);
     } else {
       context.go(RouteConstants.login);
     }
