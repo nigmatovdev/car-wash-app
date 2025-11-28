@@ -76,7 +76,7 @@ class ServicesList extends StatelessWidget {
                     price: service.price,
                     image: service.image,
                     onTap: () {
-                      context.push('${RouteConstants.serviceDetails}/${service.id}');
+                      context.push(RouteConstants.serviceDetailsPath(service.id));
                     },
                   ),
                 );

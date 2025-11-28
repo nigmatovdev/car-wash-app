@@ -11,6 +11,7 @@ class RouteConstants {
   static const String home = '/home';
   static const String services = '/services';
   static const String serviceDetails = '/services/:id';
+  static String serviceDetailsPath(String id) => '/services/$id';
   static const String bookings = '/bookings';
   static const String bookingDetails = '/bookings/:id';
   static const String createBooking = '/bookings/create';

@@ -253,7 +253,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
       margin: EdgeInsets.only(bottom: isCompact ? 0 : 12),
       child: InkWell(
         onTap: () {
-          context.push('${RouteConstants.serviceDetails}/${service.id}');
+          context.push(RouteConstants.serviceDetailsPath(service.id));
         },
         borderRadius: BorderRadius.circular(12),
         child: isCompact

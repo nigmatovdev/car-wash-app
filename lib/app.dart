@@ -6,6 +6,7 @@ import 'core/storage/local_storage.dart';
 import 'shared/services/notification_service.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/home/presentation/providers/home_provider.dart';
+import 'features/services/presentation/providers/service_provider.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -16,6 +17,7 @@ class App extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => HomeProvider()),
+        ChangeNotifierProvider(create: (_) => ServiceProvider()),
       ],
       child: MaterialApp.router(
         title: 'CarWash Pro',
