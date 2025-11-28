@@ -17,8 +17,11 @@ class RegisterForm extends StatefulWidget {
 
 class _RegisterFormState extends State<RegisterForm> {
   final _formKey = GlobalKey<FormState>();
-  final _fullNameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -28,8 +31,11 @@ class _RegisterFormState extends State<RegisterForm> {
 
   @override
   void dispose() {
-    _fullNameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -54,9 +60,12 @@ class _RegisterFormState extends State<RegisterForm> {
     authProvider.clearError();
     
     final success = await authProvider.register(
-      fullName: _fullNameController.text.trim(),
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text,
+      phone: _phoneController.text.trim(),
+      address: _addressController.text.trim(),
       role: _selectedRole ?? 'customer',
     );
 
@@ -83,14 +92,29 @@ class _RegisterFormState extends State<RegisterForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Full Name Field
+              // First Name Field
               CustomTextField(
-                label: 'Full Name',
-                hint: 'Enter your full name',
-                controller: _fullNameController,
+                label: 'First Name',
+                hint: 'Enter your first name',
+                controller: _firstNameController,
                 validator: (value) => Validators.required(
                   value,
-                  fieldName: 'Full name',
+                  fieldName: 'First name',
+                ),
+                prefixIcon: const Icon(Icons.person_outlined),
+                enabled: !authProvider.isLoading,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Last Name Field
+              CustomTextField(
+                label: 'Last Name',
+                hint: 'Enter your last name',
+                controller: _lastNameController,
+                validator: (value) => Validators.required(
+                  value,
+                  fieldName: 'Last name',
                 ),
                 prefixIcon: const Icon(Icons.person_outlined),
                 enabled: !authProvider.isLoading,
@@ -106,6 +130,35 @@ class _RegisterFormState extends State<RegisterForm> {
                 keyboardType: TextInputType.emailAddress,
                 validator: Validators.email,
                 prefixIcon: const Icon(Icons.email_outlined),
+                enabled: !authProvider.isLoading,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Phone Field
+              CustomTextField(
+                label: 'Phone',
+                hint: 'Enter your phone number',
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                validator: Validators.phone,
+                prefixIcon: const Icon(Icons.phone_outlined),
+                enabled: !authProvider.isLoading,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Address Field
+              CustomTextField(
+                label: 'Address',
+                hint: 'Enter your address',
+                controller: _addressController,
+                maxLines: 2,
+                validator: (value) => Validators.required(
+                  value,
+                  fieldName: 'Address',
+                ),
+                prefixIcon: const Icon(Icons.location_on_outlined),
                 enabled: !authProvider.isLoading,
               ),
 
@@ -281,4 +334,3 @@ class _RegisterFormState extends State<RegisterForm> {
     );
   }
 }
-

@@ -21,9 +21,13 @@ class AuthProvider extends ChangeNotifier {
   
   // Register
   Future<bool> register({
-    required String fullName,
+    required String firstName,
+    required String lastName,
     required String email,
     required String password,
+    String? phone,
+    String? address,
+    String? avatar,
     String role = 'customer',
   }) async {
     _isLoading = true;
@@ -31,13 +35,20 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     
     try {
+      // Convert role to uppercase to match API
+      final roleUpper = role.toUpperCase();
+      
       final response = await _apiClient.post(
         ApiConstants.register,
         data: {
-          'fullName': fullName,
+          'firstName': firstName,
+          'lastName': lastName,
           'email': email,
           'password': password,
-          'role': role,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
+          if (address != null && address.isNotEmpty) 'address': address,
+          if (avatar != null && avatar.isNotEmpty) 'avatar': avatar,
+          'role': roleUpper == 'WASHER' ? 'WASHER' : 'CUSTOMER',
         },
       );
       
