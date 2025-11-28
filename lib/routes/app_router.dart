@@ -4,6 +4,7 @@ import '../../core/constants/route_constants.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/onboarding_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/services/presentation/pages/services_page.dart';
 import '../../features/bookings/presentation/pages/bookings_page.dart';
@@ -94,19 +95,6 @@ class AppRouter {
 }
 
 // Placeholder pages that need to be created
-class RegisterPage extends StatelessWidget {
-  const RegisterPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text('Register Page'),
-      ),
-    );
-  }
-}
-
 class ServiceDetailsPage extends StatelessWidget {
   final String serviceId;
   

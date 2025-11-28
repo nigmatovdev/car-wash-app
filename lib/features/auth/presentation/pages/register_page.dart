@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/colors.dart';
-import '../widgets/login_form.dart';
+import '../widgets/register_form.dart';
 
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatelessWidget {
+  const RegisterPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Create Account'),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -15,7 +19,7 @@ class LoginPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
 
                 // Logo/Icon
                 Center(
@@ -27,7 +31,7 @@ class LoginPage extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
-                      Icons.local_car_wash,
+                      Icons.person_add,
                       size: 50,
                       color: AppColors.primary,
                     ),
@@ -38,7 +42,7 @@ class LoginPage extends StatelessWidget {
 
                 // Welcome Text
                 Text(
-                  'Welcome Back',
+                  'Create Your Account',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -49,7 +53,7 @@ class LoginPage extends StatelessWidget {
                 const SizedBox(height: 8),
 
                 Text(
-                  'Sign in to continue to CarWash Pro',
+                  'Sign up to get started with CarWash Pro',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -58,8 +62,8 @@ class LoginPage extends StatelessWidget {
 
                 const SizedBox(height: 40),
 
-                // Login Form
-                const LoginForm(),
+                // Register Form
+                const RegisterForm(),
 
                 const SizedBox(height: 20),
               ],
@@ -70,3 +74,4 @@ class LoginPage extends StatelessWidget {
     );
   }
 }
+
