@@ -29,19 +29,22 @@ class UserModel {
   }
   
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Handle both direct user object and nested user object
+    final userData = json['user'] ?? json;
+    
     return UserModel(
-      id: json['id'] as String,
-      email: json['email'] as String,
-      firstName: json['firstName'] as String?,
-      lastName: json['lastName'] as String?,
-      phone: json['phone'] as String?,
-      avatar: json['avatar'] as String?,
-      role: json['role'] as String? ?? 'user',
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
+      id: userData['id'] as String? ?? '',
+      email: userData['email'] as String? ?? '',
+      firstName: userData['firstName'] as String?,
+      lastName: userData['lastName'] as String?,
+      phone: userData['phone'] as String?,
+      avatar: userData['avatar'] as String?,
+      role: userData['role'] as String? ?? 'user',
+      createdAt: userData['createdAt'] != null
+          ? DateTime.parse(userData['createdAt'] as String)
           : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] as String)
+      updatedAt: userData['updatedAt'] != null
+          ? DateTime.parse(userData['updatedAt'] as String)
           : null,
     );
   }

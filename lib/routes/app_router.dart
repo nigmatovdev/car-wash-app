@@ -6,7 +6,7 @@ import '../../features/auth/presentation/pages/onboarding_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
-import '../../features/services/presentation/pages/services_page.dart';
+import '../../features/services/presentation/pages/services_list_page.dart';
 import '../../features/bookings/presentation/pages/bookings_page.dart';
 import '../../features/payments/presentation/pages/payments_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -48,7 +48,7 @@ class AppRouter {
       ),
       GoRoute(
         path: RouteConstants.services,
-        builder: (context, state) => const ServicesPage(),
+        builder: (context, state) => const ServicesListPage(),
       ),
       GoRoute(
         path: RouteConstants.serviceDetails,

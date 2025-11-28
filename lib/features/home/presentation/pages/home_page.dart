@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/home_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/home_header.dart';
 import '../widgets/quick_actions.dart';
 import '../widgets/active_booking_card.dart';
@@ -19,7 +20,15 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HomeProvider>().initialize();
+      final authProvider = context.read<AuthProvider>();
+      final homeProvider = context.read<HomeProvider>();
+      
+      // If user is not in AuthProvider, fetch it
+      if (authProvider.user == null) {
+        authProvider.getCurrentUser();
+      }
+      
+      homeProvider.initialize();
     });
   }
 
@@ -34,9 +43,15 @@ class _HomePageState extends State<HomePage> {
               slivers: [
                 // Header
                 SliverToBoxAdapter(
-                  child: HomeHeader(
-                    userName: homeProvider.user?.fullName,
-                    userAvatar: homeProvider.user?.avatar,
+                  child: Consumer<AuthProvider>(
+                    builder: (context, authProvider, child) {
+                      return HomeHeader(
+                        userName: authProvider.user?.fullName ?? 
+                                 homeProvider.user?.fullName,
+                        userAvatar: authProvider.user?.avatar ?? 
+                                   homeProvider.user?.avatar,
+                      );
+                    },
                   ),
                 ),
 

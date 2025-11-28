@@ -49,7 +49,7 @@ class HomeProvider extends ChangeNotifier {
         
         _services = data
             .map((json) => ServiceModel.fromJson(json))
-            .where((service) => service.isActive)
+            .where((service) => service.isActive && service.name.isNotEmpty)
             .toList();
         
         _isLoading = false;

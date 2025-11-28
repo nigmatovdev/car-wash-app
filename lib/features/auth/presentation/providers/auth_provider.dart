@@ -165,6 +165,7 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (e) {
       // Handle error silently
+      print('Error fetching user: $e');
     }
   }
   
