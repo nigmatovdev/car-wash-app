@@ -43,6 +43,39 @@ class BookingModel {
   });
   
   factory BookingModel.fromJson(Map<String, dynamic> json) {
+    // Parse scheduledDate from date and time fields, or use scheduledDate if available
+    DateTime scheduledDate;
+    if (json['scheduledDate'] != null) {
+      scheduledDate = DateTime.parse(json['scheduledDate'] as String);
+    } else if (json['date'] != null && json['time'] != null) {
+      final dateStr = json['date'] as String;
+      final timeStr = json['time'] as String;
+      // Parse date (format: 2024-12-25T00:00:00.000Z or 2024-12-25)
+      final datePart = dateStr.split('T')[0];
+      final dateParts = datePart.split('-');
+      final timeParts = timeStr.split(':');
+      scheduledDate = DateTime(
+        int.parse(dateParts[0]),
+        int.parse(dateParts[1]),
+        int.parse(dateParts[2]),
+        int.parse(timeParts[0]),
+        timeParts.length > 1 ? int.parse(timeParts[1]) : 0,
+      );
+    } else {
+      // Fallback to current date if neither is available
+      scheduledDate = DateTime.now();
+    }
+    
+    // Get totalAmount from payment.amount or totalAmount field
+    double totalAmount = 0.0;
+    if (json['payment'] != null && json['payment']['amount'] != null) {
+      totalAmount = (json['payment']['amount'] as num).toDouble();
+    } else if (json['totalAmount'] != null) {
+      totalAmount = (json['totalAmount'] as num).toDouble();
+    } else if (json['service'] != null && json['service']['price'] != null) {
+      totalAmount = (json['service']['price'] as num).toDouble();
+    }
+    
     return BookingModel(
       id: json['id'] as String,
       userId: json['userId'] as String,
@@ -53,7 +86,7 @@ class BookingModel {
       user: json['user'] != null
           ? UserModel.fromJson(json['user'] as Map<String, dynamic>)
           : null,
-      scheduledDate: DateTime.parse(json['scheduledDate'] as String),
+      scheduledDate: scheduledDate,
       address: json['address'] as String?,
       latitude: json['latitude'] != null
           ? (json['latitude'] as num).toDouble()
@@ -62,7 +95,7 @@ class BookingModel {
           ? (json['longitude'] as num).toDouble()
           : null,
       status: _parseStatus(json['status'] as String),
-      totalAmount: (json['totalAmount'] as num).toDouble(),
+      totalAmount: totalAmount,
       notes: json['notes'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)

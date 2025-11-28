@@ -38,6 +38,7 @@ class HomeProvider extends ChangeNotifier {
   // Fetch services
   Future<void> fetchServices() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
     
     try {
@@ -54,9 +55,13 @@ class HomeProvider extends ChangeNotifier {
         
         _isLoading = false;
         notifyListeners();
+      } else {
+        _errorMessage = 'Failed to load services';
+        _isLoading = false;
+        notifyListeners();
       }
     } catch (e) {
-      _errorMessage = 'Failed to load services';
+      _errorMessage = 'Failed to load services: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
     }

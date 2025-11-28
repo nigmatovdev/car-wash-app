@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/route_constants.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
@@ -8,9 +7,15 @@ import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/services/presentation/pages/services_list_page.dart';
 import '../../features/services/presentation/pages/service_details_page.dart';
-import '../../features/bookings/presentation/pages/bookings_page.dart';
+import '../../features/bookings/presentation/pages/create_booking_page.dart';
+import '../../features/bookings/presentation/pages/booking_confirmation_page.dart';
+import '../../features/bookings/presentation/pages/booking_details_page.dart';
+import '../../features/bookings/presentation/pages/my_bookings_page.dart';
+import '../../features/bookings/presentation/pages/live_tracking_page.dart';
 import '../../features/payments/presentation/pages/payments_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/edit_profile_page.dart';
+import '../../features/profile/presentation/pages/settings_page.dart';
 import '../../features/location/presentation/pages/location_page.dart';
 import '../../features/admin/presentation/pages/admin_dashboard_page.dart';
 import 'route_guards.dart';
@@ -60,7 +65,7 @@ class AppRouter {
       ),
       GoRoute(
         path: RouteConstants.bookings,
-        builder: (context, state) => const BookingsPage(),
+        builder: (context, state) => const MyBookingsPage(),
       ),
       GoRoute(
         path: RouteConstants.bookingDetails,
@@ -71,7 +76,17 @@ class AppRouter {
       ),
       GoRoute(
         path: RouteConstants.createBooking,
-        builder: (context, state) => const CreateBookingPage(),
+        builder: (context, state) {
+          final serviceId = state.uri.queryParameters['serviceId'];
+          return CreateBookingPage(serviceId: serviceId);
+        },
+      ),
+      GoRoute(
+        path: RouteConstants.bookingConfirmation,
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return BookingConfirmationPage(bookingId: id);
+        },
       ),
       GoRoute(
         path: RouteConstants.payments,
@@ -82,8 +97,22 @@ class AppRouter {
         builder: (context, state) => const ProfilePage(),
       ),
       GoRoute(
+        path: RouteConstants.editProfile,
+        builder: (context, state) => const EditProfilePage(),
+      ),
+      GoRoute(
+        path: RouteConstants.settings,
+        builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
         path: RouteConstants.location,
-        builder: (context, state) => const LocationPage(),
+        builder: (context, state) {
+          final bookingId = state.uri.queryParameters['bookingId'];
+          if (bookingId != null) {
+            return LiveTrackingPage(bookingId: bookingId);
+          }
+          return const LocationPage();
+        },
       ),
       
       // Admin Routes
@@ -94,35 +123,3 @@ class AppRouter {
     ],
   );
 }
-
-// Placeholder pages that need to be created
-class BookingDetailsPage extends StatelessWidget {
-  final String bookingId;
-  
-  const BookingDetailsPage({super.key, required this.bookingId});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Booking Details')),
-      body: Center(
-        child: Text('Booking ID: $bookingId'),
-      ),
-    );
-  }
-}
-
-class CreateBookingPage extends StatelessWidget {
-  const CreateBookingPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create Booking')),
-      body: const Center(
-        child: Text('Create Booking Page'),
-      ),
-    );
-  }
-}
-
