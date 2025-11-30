@@ -3,7 +3,10 @@ import 'user_model.dart';
 
 enum BookingStatus {
   pending,
-  confirmed,
+  assigned,
+  enRoute,
+  arrived,
+  confirmed, // Keep for backward compatibility (maps to ASSIGNED)
   inProgress,
   completed,
   cancelled,
@@ -131,18 +134,24 @@ class BookingModel {
   }
   
   static BookingStatus _parseStatus(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
+    switch (status.toUpperCase()) {
+      case 'PENDING':
         return BookingStatus.pending;
-      case 'confirmed':
-      case 'assigned':
-        return BookingStatus.confirmed;
-      case 'inprogress':
-      case 'in_progress':
+      case 'ASSIGNED':
+        return BookingStatus.assigned;
+      case 'EN_ROUTE':
+        return BookingStatus.enRoute;
+      case 'ARRIVED':
+        return BookingStatus.arrived;
+      case 'CONFIRMED':
+        // Backward compatibility: CONFIRMED maps to ASSIGNED
+        return BookingStatus.assigned;
+      case 'IN_PROGRESS':
+      case 'INPROGRESS':
         return BookingStatus.inProgress;
-      case 'completed':
+      case 'COMPLETED':
         return BookingStatus.completed;
-      case 'cancelled':
+      case 'CANCELLED':
         return BookingStatus.cancelled;
       default:
         return BookingStatus.pending;
@@ -152,15 +161,22 @@ class BookingModel {
   String get statusString {
     switch (status) {
       case BookingStatus.pending:
-        return 'pending';
+        return 'PENDING';
+      case BookingStatus.assigned:
+        return 'ASSIGNED';
+      case BookingStatus.enRoute:
+        return 'EN_ROUTE';
+      case BookingStatus.arrived:
+        return 'ARRIVED';
       case BookingStatus.confirmed:
-        return 'confirmed';
+        // Backward compatibility
+        return 'ASSIGNED';
       case BookingStatus.inProgress:
-        return 'in_progress';
+        return 'IN_PROGRESS';
       case BookingStatus.completed:
-        return 'completed';
+        return 'COMPLETED';
       case BookingStatus.cancelled:
-        return 'cancelled';
+        return 'CANCELLED';
     }
   }
   

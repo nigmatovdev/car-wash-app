@@ -19,6 +19,15 @@ class RouteConstants {
   static const String bookingConfirmation = '/booking-confirmation/:id';
   static String bookingConfirmationPath(String id) => '/booking-confirmation/$id';
   static const String payments = '/payments';
+  static const String paymentPage = '/payment/:bookingId';
+  static String paymentPagePath(String bookingId) => '/payment/$bookingId';
+  static const String paymentSuccess = '/payment-success/:paymentId';
+  static String paymentSuccessPath(String paymentId, {String? bookingId}) {
+    if (bookingId != null) {
+      return '/payment-success/$paymentId?bookingId=$bookingId';
+    }
+    return '/payment-success/$paymentId';
+  }
   static const String paymentDetails = '/payments/:id';
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
@@ -33,6 +42,13 @@ class RouteConstants {
   static const String adminUsers = '/admin/users';
   static const String adminBookings = '/admin/bookings';
   static const String adminServices = '/admin/services';
+  
+  // Washer Routes
+  static const String washerDashboard = '/washer/dashboard';
+  static const String washerBookingDetails = '/washer/bookings/:id';
+  static String washerBookingDetailsPath(String id) => '/washer/bookings/$id';
+  static const String washerProfile = '/washer/profile';
+  static const String washerHistory = '/washer/history';
   
   // Settings
   static const String settings = '/settings';

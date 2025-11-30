@@ -149,8 +149,14 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
     switch (status) {
       case BookingStatus.pending:
         return 'Pending';
+      case BookingStatus.assigned:
+        return 'Assigned';
+      case BookingStatus.enRoute:
+        return 'En Route';
+      case BookingStatus.arrived:
+        return 'Arrived';
       case BookingStatus.confirmed:
-        return 'Confirmed / Assigned';
+        return 'Assigned'; // Backward compatibility
       case BookingStatus.inProgress:
         return 'In Progress';
       case BookingStatus.completed:
@@ -164,8 +170,14 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
     switch (status) {
       case BookingStatus.pending:
         return Colors.orange;
-      case BookingStatus.confirmed:
+      case BookingStatus.assigned:
         return Colors.blue;
+      case BookingStatus.enRoute:
+        return Colors.purple;
+      case BookingStatus.arrived:
+        return Colors.orange;
+      case BookingStatus.confirmed:
+        return Colors.blue; // Backward compatibility
       case BookingStatus.inProgress:
         return Colors.purple;
       case BookingStatus.completed:

@@ -177,15 +177,15 @@ class BookingConfirmationPage extends StatelessWidget {
               Column(
                 children: [
                   PrimaryButton(
-                    text: 'View Booking',
+                    text: 'Pay Now',
                     onPressed: () {
-                      context.push(RouteConstants.bookingDetailsPath(bookingId));
+                      context.push(RouteConstants.paymentPagePath(bookingId));
                     },
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: () {
-                      context.go(RouteConstants.home);
+                      context.push(RouteConstants.bookingDetailsPath(bookingId));
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -193,6 +193,13 @@ class BookingConfirmationPage extends StatelessWidget {
                         vertical: 12,
                       ),
                     ),
+                    child: const Text('View Booking'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () {
+                      context.go(RouteConstants.home);
+                    },
                     child: const Text('Go Home'),
                   ),
                 ],

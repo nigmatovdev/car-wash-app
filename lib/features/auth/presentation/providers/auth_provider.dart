@@ -157,15 +157,46 @@ class AuthProvider extends ChangeNotifier {
   
   // Get current user
   Future<void> getCurrentUser() async {
+    _isLoading = true;
+    notifyListeners();
+    
     try {
+      // Try /users/me first, fallback to /users/profile
+      try {
+        final response = await _apiClient.get(ApiConstants.userMe);
+        if (response.statusCode == 200) {
+          _user = UserModel.fromJson(response.data);
+          _isLoading = false;
+          notifyListeners();
+          return;
+        }
+      } catch (e) {
+        // Fallback to /users/profile
+      }
+      
       final response = await _apiClient.get(ApiConstants.userProfile);
       if (response.statusCode == 200) {
         _user = UserModel.fromJson(response.data);
+        _isLoading = false;
+        notifyListeners();
+      } else {
+        _isLoading = false;
         notifyListeners();
       }
     } catch (e) {
       // Handle error silently
       print('Error fetching user: $e');
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  
+  // Initialize user on app start
+  Future<void> initialize() async {
+    // Only fetch if we have a token and no user data
+    final token = await _secureStorage.getToken();
+    if (token != null && token.isNotEmpty && _user == null) {
+      await getCurrentUser();
     }
   }
   

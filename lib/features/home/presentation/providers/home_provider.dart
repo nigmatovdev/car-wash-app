@@ -84,7 +84,10 @@ class HomeProvider extends ChangeNotifier {
         try {
           _activeBooking = _bookings.firstWhere(
             (booking) => booking.status == BookingStatus.inProgress ||
-                booking.status == BookingStatus.confirmed,
+                booking.status == BookingStatus.assigned ||
+                booking.status == BookingStatus.enRoute ||
+                booking.status == BookingStatus.arrived ||
+                booking.status == BookingStatus.confirmed, // Backward compatibility
           );
         } catch (e) {
           _activeBooking = null;

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/route_constants.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../core/storage/local_storage.dart';
 import '../../../../core/theme/colors.dart';
+import '../providers/auth_provider.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -77,11 +79,42 @@ class _SplashPageState extends State<SplashPage>
     
     // Navigate based on authentication and onboarding status
     if (isAuthenticated) {
-      context.go(RouteConstants.home);
+      // Get user role and navigate to appropriate dashboard
+      final authProvider = context.read<AuthProvider>();
+      
+      // Ensure user data is loaded
+      if (authProvider.user == null) {
+        await authProvider.getCurrentUser();
+      }
+      
+      // Wait a bit more if still loading
+      int retries = 0;
+      while (authProvider.isLoading && retries < 10) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        retries++;
+        if (!mounted) return;
+      }
+      
+      if (!mounted) return;
+      
+      final user = authProvider.user;
+      if (user != null) {
+        final role = user.role.toLowerCase();
+        if (role == 'washer' || role == 'washers') {
+          if (mounted) context.go(RouteConstants.washerDashboard);
+        } else if (role == 'admin' || role == 'administrator') {
+          if (mounted) context.go(RouteConstants.adminDashboard);
+        } else {
+          if (mounted) context.go(RouteConstants.home);
+        }
+      } else {
+        // Fallback to home if user can't be fetched
+        if (mounted) context.go(RouteConstants.home);
+      }
     } else if (!onboardingCompleted) {
-      context.go(RouteConstants.onboarding);
+      if (mounted) context.go(RouteConstants.onboarding);
     } else {
-      context.go(RouteConstants.login);
+      if (mounted) context.go(RouteConstants.login);
     }
   }
 

@@ -66,8 +66,14 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     switch (status) {
       case BookingStatus.pending:
         return AppColors.warning;
-      case BookingStatus.confirmed:
+      case BookingStatus.assigned:
         return AppColors.info;
+      case BookingStatus.enRoute:
+        return AppColors.secondary;
+      case BookingStatus.arrived:
+        return Colors.orange;
+      case BookingStatus.confirmed:
+        return AppColors.info; // Backward compatibility
       case BookingStatus.inProgress:
         return AppColors.primary;
       case BookingStatus.completed:
@@ -81,8 +87,14 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     switch (status) {
       case BookingStatus.pending:
         return 'Pending';
+      case BookingStatus.assigned:
+        return 'Assigned';
+      case BookingStatus.enRoute:
+        return 'En Route';
+      case BookingStatus.arrived:
+        return 'Arrived';
       case BookingStatus.confirmed:
-        return 'Confirmed';
+        return 'Assigned'; // Backward compatibility
       case BookingStatus.inProgress:
         return 'In Progress';
       case BookingStatus.completed:

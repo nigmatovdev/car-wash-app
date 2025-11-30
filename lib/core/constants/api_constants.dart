@@ -34,10 +34,20 @@ class ApiConstants {
   static const String payments = '/payments';
   static const String paymentDetails = '/payments/{id}';
   static const String processPayment = '/payments/process';
+  static const String createPaymentIntent = '/payments/intent'; // POST /payments/intent
+  static const String confirmDemoPayment = '/payments/demo/confirm'; // POST /payments/demo/confirm (for demo/testing)
   
   // Location Endpoints
   static const String locations = '/locations';
   static const String nearbyLocations = '/locations/nearby';
+  
+  // Washer Endpoints
+  // Note: Washers use the same /bookings/me endpoint - server filters by user role
+  // Stats are calculated locally from bookings data
+  static const String availableBookings = '/bookings/available'; // GET /bookings/available (Washer only)
+  static const String acceptBooking = '/bookings/{id}/accept'; // PATCH /bookings/{id}/accept (Washer only)
+  static const String washerBookingDetails = '/bookings/{id}'; // Same as bookingDetails but washer view
+  // Note: updateBookingStatus is already defined above for bookings
   
   // Admin Endpoints
   static const String adminUsers = '/admin/users';

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/constants/route_constants.dart';
 import '../providers/home_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/home_header.dart';
@@ -25,7 +27,37 @@ class _HomePageState extends State<HomePage> {
       
       // If user is not in AuthProvider, fetch it
       if (authProvider.user == null) {
-        authProvider.getCurrentUser();
+        authProvider.getCurrentUser().then((_) {
+          // After fetching user, check role and redirect if needed
+          if (mounted) {
+            final user = authProvider.user;
+            if (user != null) {
+              final role = user.role.toLowerCase();
+              if (role == 'washer' || role == 'washers') {
+                context.go(RouteConstants.washerDashboard);
+                return;
+              }
+              if (role == 'admin' || role == 'administrator') {
+                context.go(RouteConstants.adminDashboard);
+                return;
+              }
+            }
+          }
+        });
+      } else {
+        // User already loaded, check role immediately
+        final user = authProvider.user;
+        if (user != null) {
+          final role = user.role.toLowerCase();
+          if (role == 'washer' || role == 'washers') {
+            context.go(RouteConstants.washerDashboard);
+            return;
+          }
+          if (role == 'admin' || role == 'administrator') {
+            context.go(RouteConstants.adminDashboard);
+            return;
+          }
+        }
       }
       
       homeProvider.initialize();

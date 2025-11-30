@@ -13,11 +13,17 @@ import '../../features/bookings/presentation/pages/booking_details_page.dart';
 import '../../features/bookings/presentation/pages/my_bookings_page.dart';
 import '../../features/bookings/presentation/pages/live_tracking_page.dart';
 import '../../features/payments/presentation/pages/payments_page.dart';
+import '../../features/payments/presentation/pages/payment_page.dart';
+import '../../features/payments/presentation/pages/payment_success_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
 import '../../features/location/presentation/pages/location_page.dart';
 import '../../features/admin/presentation/pages/admin_dashboard_page.dart';
+import '../../features/washer/presentation/pages/washer_dashboard_page.dart';
+import '../../features/washer/presentation/pages/washer_booking_details_page.dart';
+import '../../features/washer/presentation/pages/washer_profile_page.dart';
+import '../../features/washer/presentation/pages/washer_history_page.dart';
 import 'route_guards.dart';
 
 class AppRouter {
@@ -95,6 +101,24 @@ class AppRouter {
         builder: (context, state) => const PaymentsPage(),
       ),
       GoRoute(
+        path: RouteConstants.paymentPage,
+        builder: (context, state) {
+          final bookingId = state.pathParameters['bookingId']!;
+          return PaymentPage(bookingId: bookingId);
+        },
+      ),
+      GoRoute(
+        path: RouteConstants.paymentSuccess,
+        builder: (context, state) {
+          final paymentId = state.pathParameters['paymentId']!;
+          final bookingId = state.uri.queryParameters['bookingId'];
+          return PaymentSuccessPage(
+            paymentId: paymentId,
+            bookingId: bookingId,
+          );
+        },
+      ),
+      GoRoute(
         path: RouteConstants.profile,
         builder: (context, state) => const ProfilePage(),
       ),
@@ -121,6 +145,27 @@ class AppRouter {
       GoRoute(
         path: RouteConstants.adminDashboard,
         builder: (context, state) => const AdminDashboardPage(),
+      ),
+      
+      // Washer Routes
+      GoRoute(
+        path: RouteConstants.washerDashboard,
+        builder: (context, state) => const WasherDashboardPage(),
+      ),
+      GoRoute(
+        path: RouteConstants.washerBookingDetails,
+        builder: (context, state) {
+          final bookingId = state.pathParameters['id']!;
+          return WasherBookingDetailsPage(bookingId: bookingId);
+        },
+      ),
+      GoRoute(
+        path: RouteConstants.washerProfile,
+        builder: (context, state) => const WasherProfilePage(),
+      ),
+      GoRoute(
+        path: RouteConstants.washerHistory,
+        builder: (context, state) => const WasherHistoryPage(),
       ),
     ],
   );
