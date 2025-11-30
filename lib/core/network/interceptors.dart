@@ -64,9 +64,9 @@ class LoggingInterceptor extends Interceptor {
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     // Don't log requests to route paths that aren't API endpoints
     if (!options.path.contains('/bookings/create')) {
-      print('REQUEST[${options.method}] => PATH: ${options.path}');
-      print('Headers: ${options.headers}');
-      print('Data: ${options.data}');
+    print('REQUEST[${options.method}] => PATH: ${options.path}');
+    print('Headers: ${options.headers}');
+    print('Data: ${options.data}');
     }
     handler.next(options);
   }
@@ -75,8 +75,8 @@ class LoggingInterceptor extends Interceptor {
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     // Don't log responses for route paths that aren't API endpoints
     if (!response.requestOptions.path.contains('/bookings/create')) {
-      print('RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
-      print('Data: ${response.data}');
+    print('RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
+    print('Data: ${response.data}');
     }
     handler.next(response);
   }
@@ -85,8 +85,8 @@ class LoggingInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) {
     // Don't log errors for route paths (not API endpoints)
     if (!err.requestOptions.path.contains('/bookings/create')) {
-      print('ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
-      print('Message: ${err.message}');
+    print('ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
+    print('Message: ${err.message}');
     }
     handler.next(err);
   }

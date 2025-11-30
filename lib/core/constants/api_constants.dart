@@ -26,7 +26,9 @@ class ApiConstants {
   static const String bookingDetails = '/bookings/{id}';
   static const String createBooking = '/bookings'; // POST /bookings
   static const String cancelBooking = '/bookings/{id}/cancel';
+  static const String deleteBooking = '/bookings/{id}'; // DELETE /bookings/{id}
   static const String updateBooking = '/bookings/{id}';
+  static const String updateBookingStatus = '/bookings/{id}/status'; // PATCH /bookings/{id}/status
   
   // Payments Endpoints
   static const String payments = '/payments';

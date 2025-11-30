@@ -10,6 +10,7 @@ import '../../../../core/utils/helpers.dart';
 import '../../../../core/models/booking_model.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/dialogs/confirm_dialog.dart';
+import '../../../../shared/widgets/map/maplibre_widget.dart';
 import '../../../home/presentation/providers/home_provider.dart';
 
 class BookingDetailsPage extends StatefulWidget {
@@ -149,7 +150,7 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
       case BookingStatus.pending:
         return 'Pending';
       case BookingStatus.confirmed:
-        return 'Confirmed';
+        return 'Confirmed / Assigned';
       case BookingStatus.inProgress:
         return 'In Progress';
       case BookingStatus.completed:
@@ -158,19 +159,174 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
         return 'Cancelled';
     }
   }
+  
+  Color _getStatusColor(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.pending:
+        return Colors.orange;
+      case BookingStatus.confirmed:
+        return Colors.blue;
+      case BookingStatus.inProgress:
+        return Colors.purple;
+      case BookingStatus.completed:
+        return Colors.green;
+      case BookingStatus.cancelled:
+        return Colors.red;
+    }
+  }
 
-  void _cancelBooking() {
-    ConfirmDialog.show(
+  Future<void> _deleteBooking() async {
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: 'Delete Booking',
+      message: 'Are you sure you want to delete this cancelled booking? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Keep',
+    );
+    
+    if (confirmed != true) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final endpoint = ApiConstants.deleteBooking.replaceAll('{id}', widget.bookingId);
+      print('🔵 [BOOKING_DETAILS] Deleting booking: $endpoint');
+      
+      final response = await _apiClient.delete(endpoint);
+      
+      print('🔵 [BOOKING_DETAILS] Delete response: ${response.statusCode}');
+      print('🔵 [BOOKING_DETAILS] Delete response data: ${response.data}');
+      
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Refresh bookings list
+        final homeProvider = context.read<HomeProvider>();
+        homeProvider.fetchBookings();
+        
+        if (mounted) {
+          Helpers.showSuccessSnackBar(context, 'Booking deleted successfully');
+          // Navigate back after a short delay
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              context.pop();
+            }
+          });
+        }
+      } else {
+        throw Exception('Failed to delete booking: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ [BOOKING_DETAILS] Error deleting booking: $e');
+      String errorMessage = 'Failed to delete booking. Please try again.';
+      
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('403') || errorStr.contains('forbidden')) {
+        errorMessage = 'You do not have permission to delete this booking.';
+      } else if (errorStr.contains('404')) {
+        errorMessage = 'Booking not found.';
+      }
+      
+      if (mounted) {
+        Helpers.showErrorSnackBar(context, errorMessage);
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _cancelBooking() async {
+    final confirmed = await ConfirmDialog.show(
       context,
       title: 'Cancel Booking',
-      message: 'Are you sure you want to cancel this booking?',
+      message: 'Are you sure you want to cancel this booking? This action cannot be undone.',
       confirmText: 'Cancel Booking',
       cancelText: 'Keep Booking',
-      onConfirm: () {
-        // TODO: Implement cancel booking API call
-        Helpers.showSnackBar(context, 'Cancel booking functionality coming soon!');
-      },
     );
+    
+    if (confirmed != true) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Use the customer-facing cancel endpoint
+      // This allows customers to cancel their own bookings
+      final endpoint = ApiConstants.cancelBooking.replaceAll('{id}', widget.bookingId);
+      print('🔵 [BOOKING_DETAILS] Cancelling booking: $endpoint');
+      
+      // Cancel endpoint uses PATCH method
+      final response = await _apiClient.patch(
+        endpoint,
+        data: {}, // Empty body or specific cancel data if required
+      );
+      
+      print('🔵 [BOOKING_DETAILS] Cancel response: ${response.statusCode}');
+      print('🔵 [BOOKING_DETAILS] Cancel response data: ${response.data}');
+      
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Update booking status immediately in UI
+        if (_booking != null) {
+          setState(() {
+            // Create a new booking model with cancelled status
+            _booking = BookingModel(
+              id: _booking!.id,
+              userId: _booking!.userId,
+              serviceId: _booking!.serviceId,
+              service: _booking!.service,
+              user: _booking!.user,
+              scheduledDate: _booking!.scheduledDate,
+              address: _booking!.address,
+              latitude: _booking!.latitude,
+              longitude: _booking!.longitude,
+              status: BookingStatus.cancelled,
+              totalAmount: _booking!.totalAmount,
+              notes: _booking!.notes,
+              createdAt: _booking!.createdAt,
+              updatedAt: DateTime.now(),
+            );
+            _isLoading = false;
+          });
+        }
+        
+        // Reload booking to get full updated data from server
+        _loadBooking();
+        
+        // Refresh bookings list
+        final homeProvider = context.read<HomeProvider>();
+        homeProvider.fetchBookings();
+        
+        if (mounted) {
+          Helpers.showSuccessSnackBar(context, 'Booking cancelled successfully');
+        }
+      } else {
+        throw Exception('Failed to cancel booking: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ [BOOKING_DETAILS] Error cancelling booking: $e');
+      String errorMessage = 'Failed to cancel booking. Please try again.';
+      
+      // Provide more specific error messages
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('washer') || errorStr.contains('admin') || errorStr.contains('access required')) {
+        errorMessage = 'You do not have permission to cancel this booking. Only the booking creator can cancel it.';
+      } else if (errorStr.contains('403') || errorStr.contains('forbidden')) {
+        errorMessage = 'You do not have permission to cancel this booking.';
+      } else if (errorStr.contains('404')) {
+        errorMessage = 'Booking not found.';
+      } else if (errorStr.contains('400') || errorStr.contains('bad request')) {
+        errorMessage = 'Cannot cancel this booking. It may already be completed or cancelled.';
+      }
+      
+      if (mounted) {
+        Helpers.showErrorSnackBar(context, errorMessage);
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -268,14 +424,37 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      _getStatusText(booking.status),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(booking.status),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _getStatusText(booking.status),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  if (booking.createdAt != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Created: ${Formatters.formatDisplayDate(booking.createdAt!)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.white70,
+                          ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -355,39 +534,35 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                     ],
                   ),
 
-                  if (booking.address != null) ...[
+                  if (booking.latitude != null && booking.longitude != null) ...[
                     const SizedBox(height: 24),
                     // Map View
-                    Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.map, size: 48, color: AppColors.primary),
-                            SizedBox(height: 8),
-                            Text(
-                              'Map View',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 14,
+                    _buildSection(
+                      context,
+                      'Location Map',
+                      [
+                        Container(
+                          height: 250,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: MapLibreWidget(
+                            initialLatitude: booking.latitude,
+                            initialLongitude: booking.longitude,
+                            initialZoom: 15.0,
+                            enableMarkerOnTap: false,
+                            enableMarkerOnLongPress: false,
+                            markers: [
+                              MapMarker(
+                                latitude: booking.latitude!,
+                                longitude: booking.longitude!,
                               ),
-                            ),
-                            Text(
-                              '(Map integration coming soon)',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
 
@@ -461,24 +636,45 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                     [
                       _buildInfoCard(
                         context,
-                        'Status',
-                        'Pending',
-                        Icons.payment,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildInfoCard(
-                        context,
-                        'Amount',
+                        'Total Amount',
                         Formatters.formatCurrency(booking.totalAmount),
                         Icons.attach_money,
                         isAmount: true,
                       ),
+                      if (booking.service != null) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          context,
+                          'Service Price',
+                          Formatters.formatCurrency(booking.service!.price),
+                          Icons.local_car_wash,
+                        ),
+                      ],
                     ],
                   ),
+                  
+                  // Notes Section
+                  if (booking.notes != null && booking.notes!.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    _buildSection(
+                      context,
+                      'Additional Notes',
+                      [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            booking.notes!,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
 
                   const SizedBox(height: 24),
 
                   // Actions
+                  // Cancel button - only show if NOT cancelled and NOT completed
                   if (booking.status != BookingStatus.cancelled &&
                       booking.status != BookingStatus.completed) ...[
                     SizedBox(
@@ -491,6 +687,25 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                     const SizedBox(height: 12),
                   ],
 
+                  // Delete button - only show for cancelled bookings
+                  if (booking.status == BookingStatus.cancelled) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _deleteBooking,
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Delete Booking'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          foregroundColor: AppColors.error,
+                          side: BorderSide(color: AppColors.error),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // Track Washer button - only show for in-progress bookings
                   if (booking.status == BookingStatus.inProgress) ...[
                     SizedBox(
                       width: double.infinity,
@@ -510,6 +725,7 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                     const SizedBox(height: 12),
                   ],
 
+                  // Contact Support button - show for all bookings
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
