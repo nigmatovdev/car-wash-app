@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/theme/colors.dart';
-import '../../services/maplibre_service.dart';
 
 /// Map widget for displaying maps using flutter_map
 class MapLibreWidget extends StatefulWidget {
@@ -49,8 +48,8 @@ class MapLibreWidget extends StatefulWidget {
 
 class MapLibreWidgetState extends State<MapLibreWidget> {
   final MapController _mapController = MapController();
-  final MapLibreService _mapService = MapLibreService();
   final List<Marker> _markers = [];
+  bool _hasNetworkError = false;
 
   @override
   void initState() {
@@ -67,6 +66,18 @@ class MapLibreWidgetState extends State<MapLibreWidget> {
         );
       }
     }
+    
+    // Check for network errors after a short delay
+    // This helps catch cases where the emulator has no internet
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted && !_hasNetworkError) {
+        // If we still haven't detected network, show fallback
+        // This is a safety net for emulators without internet
+        setState(() {
+          _hasNetworkError = false; // Reset to allow map to try loading
+        });
+      }
+    });
   }
 
   /// Move camera to a specific location
@@ -92,7 +103,7 @@ class MapLibreWidgetState extends State<MapLibreWidget> {
       point: LatLng(latitude, longitude),
       width: 40,
       height: 40,
-      builder: (context) => Container(
+      child: Container(
         decoration: BoxDecoration(
           color: AppColors.error,
           shape: BoxShape.circle,
@@ -165,43 +176,131 @@ class MapLibreWidgetState extends State<MapLibreWidget> {
 
     return Stack(
       children: [
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: LatLng(initialLat, initialLng),
-            initialZoom: widget.initialZoom,
-            onTap: widget.enableMarkerOnTap ? _onTap : null,
-            onLongPress: widget.enableMarkerOnLongPress ? _onLongPress : null,
-            interactionOptions: InteractionOptions(
-              flags: InteractiveFlag.all,
-            ),
-          ),
-          children: [
-            // OpenStreetMap tiles
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.carwash.app',
-              maxZoom: 19,
-            ),
-            
-            // Polylines
-            if (widget.polyline != null)
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: widget.polyline!.points,
-                    strokeWidth: widget.polyline!.width,
-                    color: _parseColor(widget.polyline!.color),
+        // Show map or fallback UI
+        if (_hasNetworkError)
+          // Fallback UI when network fails
+          Container(
+            color: Colors.grey[200],
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.wifi_off,
+                    size: 64,
+                    color: Colors.grey[400],
                   ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Map unavailable',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please check your internet connection',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Show location marker and coordinates even without map
+                  if (widget.initialLatitude != null && widget.initialLongitude != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                      ),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Lat: ${widget.initialLatitude!.toStringAsFixed(6)}\nLng: ${widget.initialLongitude!.toStringAsFixed(6)}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[700],
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            
-            // Markers
-            MarkerLayer(
-              markers: _markers,
             ),
-          ],
-        ),
+          )
+        else
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: LatLng(initialLat, initialLng),
+              initialZoom: widget.initialZoom,
+              onTap: widget.enableMarkerOnTap ? _onTap : null,
+              onLongPress: widget.enableMarkerOnLongPress ? _onLongPress : null,
+              interactionOptions: InteractionOptions(
+                flags: InteractiveFlag.all,
+              ),
+            ),
+            children: [
+              // OpenStreetMap tiles with error handling
+              // Note: OSM recommends NOT using subdomains
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.carwash.app',
+                maxZoom: 19,
+                errorTileCallback: (tile, error, stackTrace) {
+                  // Handle tile loading errors gracefully
+                  // Check if it's a network/DNS error
+                  final errorStr = error.toString().toLowerCase();
+                  if (errorStr.contains('host lookup') || 
+                      errorStr.contains('socket') ||
+                      errorStr.contains('network') ||
+                      errorStr.contains('failed')) {
+                    if (mounted && !_hasNetworkError) {
+                      // Set error state immediately for network issues
+                      setState(() {
+                        _hasNetworkError = true;
+                      });
+                    }
+                  }
+                  debugPrint('Tile loading error: $error');
+                },
+              ),
+              
+              // Polylines
+              if (widget.polyline != null)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: widget.polyline!.points,
+                      strokeWidth: widget.polyline!.width,
+                      color: _parseColor(widget.polyline!.color),
+                    ),
+                  ],
+                ),
+              
+              // Markers
+              MarkerLayer(
+                markers: _markers,
+              ),
+            ],
+          ),
 
         // Center marker overlay (always visible at center)
         if (widget.enableMarkerOnTap || widget.enableMarkerOnLongPress)

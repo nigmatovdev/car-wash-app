@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'maplibre_service.dart';
 
 class LocationService {
   // Check if location services are enabled
@@ -106,8 +107,8 @@ class LocationService {
         return _formatCoordinatesAsAddress(latitude, longitude);
       } on TimeoutException {
         if (attempt == maxRetries - 1) {
-          // Last attempt failed, return coordinates as address
-          return _formatCoordinatesAsAddress(latitude, longitude);
+          // Last attempt failed, try MapLibreService as fallback
+          return await _tryMapLibreGeocoding(latitude, longitude);
         }
         // Wait before retry (exponential backoff)
         await Future.delayed(Duration(seconds: attempt + 1));
@@ -120,8 +121,8 @@ class LocationService {
             errorString.contains('io_error') ||
             errorString.contains('network')) {
           if (attempt == maxRetries - 1) {
-            // Last attempt failed, return coordinates as address
-            return _formatCoordinatesAsAddress(latitude, longitude);
+            // Last attempt failed, try MapLibreService as fallback
+            return await _tryMapLibreGeocoding(latitude, longitude);
           }
           // Wait before retry
           await Future.delayed(Duration(seconds: attempt + 1));
@@ -133,6 +134,34 @@ class LocationService {
     }
     
     // Should never reach here, but just in case
+    return _formatCoordinatesAsAddress(latitude, longitude);
+  }
+  
+  // Try MapLibreService (OpenStreetMap Nominatim) as fallback
+  Future<String> _tryMapLibreGeocoding(double latitude, double longitude) async {
+    try {
+      final mapService = MapLibreService();
+      final location = await mapService.reverseGeocode(latitude, longitude);
+      if (location.address != null && location.address!.isNotEmpty) {
+        return location.address!;
+      }
+      // Build address from location model
+      final parts = <String>[];
+      if (location.street != null && location.street!.isNotEmpty) {
+        parts.add(location.street!);
+      }
+      if (location.city != null && location.city!.isNotEmpty) {
+        parts.add(location.city!);
+      }
+      if (location.state != null && location.state!.isNotEmpty) {
+        parts.add(location.state!);
+      }
+      if (parts.isNotEmpty) {
+        return parts.join(', ');
+      }
+    } catch (e) {
+      // If MapLibre also fails, return coordinates
+    }
     return _formatCoordinatesAsAddress(latitude, longitude);
   }
   

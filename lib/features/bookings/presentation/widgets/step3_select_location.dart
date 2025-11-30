@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../shared/services/location_service.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../shared/widgets/map/maplibre_widget.dart';
 import '../providers/booking_provider.dart';
 
 class Step3SelectLocation extends StatefulWidget {
@@ -96,22 +97,59 @@ class _Step3SelectLocationState extends State<Step3SelectLocation> {
     }
   }
 
-  void _confirmAddress() {
+  Future<void> _confirmAddress() async {
     final address = _addressController.text.trim();
     if (address.isEmpty) {
       Helpers.showErrorSnackBar(context, 'Please enter an address');
       return;
     }
 
-    // For now, use a default location (in production, you'd geocode the address)
-    final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
-    bookingProvider.setLocation(
-      address: address,
-      latitude: 0.0, // TODO: Geocode address to get coordinates
-      longitude: 0.0,
-    );
+    setState(() {
+      _isLoadingLocation = true;
+    });
 
-    Helpers.showSuccessSnackBar(context, 'Address confirmed');
+    try {
+      // Try to geocode the address to get coordinates
+      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      
+      try {
+        final position = await _locationService.getCoordinatesFromAddress(address);
+        bookingProvider.setLocation(
+          address: address,
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+        
+        if (mounted) {
+          Helpers.showSuccessSnackBar(context, 'Address confirmed and location found');
+        }
+      } catch (e) {
+        // If geocoding fails, save address without coordinates
+        // User can still proceed, but map won't show
+        bookingProvider.setLocation(
+          address: address,
+          latitude: 0.0,
+          longitude: 0.0,
+        );
+        
+        if (mounted) {
+          Helpers.showInfoSnackBar(
+            context, 
+            'Address saved. Location could not be found on map, but you can proceed.',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Helpers.showErrorSnackBar(context, 'Failed to process address: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingLocation = false;
+        });
+      }
+    }
   }
 
   @override
@@ -231,37 +269,62 @@ class _Step3SelectLocationState extends State<Step3SelectLocation> {
 
               const SizedBox(height: 24),
 
-              // Map Placeholder
+              // Map View
               Container(
-                height: 200,
+                height: 300,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.map, size: 48, color: AppColors.primary),
-                      SizedBox(height: 8),
-                      Text(
-                        'Map View',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
+                clipBehavior: Clip.antiAlias,
+                child: bookingProvider.selectedLatitude != null &&
+                        bookingProvider.selectedLongitude != null
+                    ? MapLibreWidget(
+                        initialLatitude: bookingProvider.selectedLatitude,
+                        initialLongitude: bookingProvider.selectedLongitude,
+                        initialZoom: 15.0,
+                        enableMarkerOnTap: false,
+                        enableMarkerOnLongPress: false,
+                        markers: [
+                          MapMarker(
+                            latitude: bookingProvider.selectedLatitude!,
+                            longitude: bookingProvider.selectedLongitude!,
+                          ),
+                        ],
+                      )
+                    : Container(
+                        color: AppColors.primary.withOpacity(0.1),
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.map, size: 48, color: AppColors.primary),
+                              SizedBox(height: 8),
+                              Text(
+                                'Map will appear here',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                'Get your location or enter an address',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      Text(
-                        '(Map integration coming soon)',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ],
           ),
