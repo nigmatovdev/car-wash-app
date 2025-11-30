@@ -29,11 +29,26 @@ class _Step3SelectLocationState extends State<Step3SelectLocation> {
     });
 
     try {
+      // Get GPS position first
       final position = await _locationService.getCurrentPosition();
-      final address = await _locationService.getAddressFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+      
+      // Try to get address (with retry and fallback built-in)
+      String address;
+      try {
+        address = await _locationService.getAddressFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+      } catch (e) {
+        // If address lookup fails, use coordinates as fallback
+        address = 'Location: ${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}';
+        if (mounted) {
+          Helpers.showInfoSnackBar(
+            context, 
+            'Location retrieved, but address lookup failed. You can edit the address manually.',
+          );
+        }
+      }
 
       final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
       bookingProvider.setLocation(
@@ -45,11 +60,32 @@ class _Step3SelectLocationState extends State<Step3SelectLocation> {
       _addressController.text = address;
 
       if (mounted) {
-        Helpers.showSuccessSnackBar(context, 'Location set successfully');
+        // Check if address is just coordinates (fallback case)
+        if (address.startsWith('Location:')) {
+          Helpers.showInfoSnackBar(
+            context, 
+            'Location set. Please verify or edit the address.',
+          );
+        } else {
+          Helpers.showSuccessSnackBar(context, 'Location set successfully');
+        }
       }
     } catch (e) {
       if (mounted) {
-        Helpers.showErrorSnackBar(context, 'Failed to get location: $e');
+        final errorMessage = e.toString();
+        String userMessage;
+        
+        if (errorMessage.contains('permission')) {
+          userMessage = 'Location permission denied. Please grant location access in settings.';
+        } else if (errorMessage.contains('disabled')) {
+          userMessage = 'Location services are disabled. Please enable them in settings.';
+        } else if (errorMessage.contains('timeout') || errorMessage.contains('network')) {
+          userMessage = 'Network timeout. Please check your internet connection and try again.';
+        } else {
+          userMessage = 'Failed to get location. Please try again or enter address manually.';
+        }
+        
+        Helpers.showErrorSnackBar(context, userMessage);
       }
     } finally {
       if (mounted) {

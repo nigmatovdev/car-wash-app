@@ -36,6 +36,15 @@ class Helpers {
     );
   }
   
+  // Show Info Snackbar
+  static void showInfoSnackBar(BuildContext context, String message) {
+    showSnackBar(
+      context,
+      message,
+      backgroundColor: Colors.blue,
+    );
+  }
+  
   // Show Loading Dialog
   static void showLoadingDialog(BuildContext context) {
     showDialog(
