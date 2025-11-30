@@ -142,7 +142,7 @@ class RecentBookingsList extends StatelessWidget {
                   ),
                 ),
                 onTap: () {
-                  context.push('${RouteConstants.bookingDetails}/${booking.id}');
+                  context.push(RouteConstants.bookingDetailsPath(booking.id));
                 },
               ),
             );

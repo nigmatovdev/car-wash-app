@@ -143,7 +143,7 @@ class ActiveBookingCard extends StatelessWidget {
               ),
               TextButton.icon(
                 onPressed: () {
-                  context.push('${RouteConstants.bookingDetails}/${booking.id}');
+                  context.push(RouteConstants.bookingDetailsPath(booking.id));
                 },
                 icon: const Icon(Icons.arrow_forward),
                 label: const Text('View Details'),

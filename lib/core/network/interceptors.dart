@@ -62,23 +62,32 @@ class AuthInterceptor extends Interceptor {
 class LoggingInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    print('REQUEST[${options.method}] => PATH: ${options.path}');
-    print('Headers: ${options.headers}');
-    print('Data: ${options.data}');
+    // Don't log requests to route paths that aren't API endpoints
+    if (!options.path.contains('/bookings/create')) {
+      print('REQUEST[${options.method}] => PATH: ${options.path}');
+      print('Headers: ${options.headers}');
+      print('Data: ${options.data}');
+    }
     handler.next(options);
   }
   
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    print('RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
-    print('Data: ${response.data}');
+    // Don't log responses for route paths that aren't API endpoints
+    if (!response.requestOptions.path.contains('/bookings/create')) {
+      print('RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
+      print('Data: ${response.data}');
+    }
     handler.next(response);
   }
   
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    print('ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
-    print('Message: ${err.message}');
+    // Don't log errors for route paths (not API endpoints)
+    if (!err.requestOptions.path.contains('/bookings/create')) {
+      print('ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
+      print('Message: ${err.message}');
+    }
     handler.next(err);
   }
 }
@@ -87,6 +96,19 @@ class LoggingInterceptor extends Interceptor {
 class ErrorInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    // Silently ignore 404 errors for route paths that aren't API endpoints
+    // This prevents harmless errors when navigating to routes like /bookings/create
+    // These are Flutter routes, not API endpoints, so 404s are expected
+    // Only ignore if it's specifically a GET request to /bookings/create (not a booking ID)
+    if (err.response?.statusCode == 404 && 
+        err.requestOptions.method == 'GET' &&
+        err.requestOptions.path == '/bookings/create') {
+      // This is a route path, not an API endpoint - just pass through the error
+      // The error will be caught and handled by the calling code
+      handler.next(err);
+      return;
+    }
+    
     String errorMessage = 'An error occurred';
     
     switch (err.type) {

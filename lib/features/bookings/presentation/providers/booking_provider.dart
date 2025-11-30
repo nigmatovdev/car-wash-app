@@ -93,42 +93,61 @@ class BookingProvider extends ChangeNotifier {
     notifyListeners();
     
     try {
-      // Format date as ISO string with time 00:00:00 (backend expects full ISO string)
-      final dateString = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-      ).toIso8601String();
+      // Format date as YYYY-MM-DD (backend expects date only, not full ISO string)
+      final dateString = '${_selectedDate!.year.toString().padLeft(4, '0')}-'
+          '${_selectedDate!.month.toString().padLeft(2, '0')}-'
+          '${_selectedDate!.day.toString().padLeft(2, '0')}';
       
       // Time is already in HH:mm format
       final timeString = _selectedTimeSlot!;
       
+      // Prepare request body exactly as API expects
+      final requestBody = {
+        'serviceId': _selectedService!.id, // UUID of the selected service
+        'latitude': _selectedLatitude,
+        'longitude': _selectedLongitude,
+        'date': dateString, // Format: "2024-12-25"
+        'time': timeString, // Format: "14:30"
+      };
+      
+      print('🔵 [BOOKING] Creating booking...');
+      print('🔵 [BOOKING] Request body: $requestBody');
+      print('🔵 [BOOKING] Endpoint: ${ApiConstants.createBooking}');
+      
       final response = await _apiClient.post(
-        ApiConstants.createBooking,
-        data: {
-          'serviceId': _selectedService!.id,
-          'date': dateString,
-          'time': timeString,
-          'latitude': _selectedLatitude,
-          'longitude': _selectedLongitude,
-          if (_selectedAddress != null && _selectedAddress!.isNotEmpty) 'address': _selectedAddress,
-          if (_notes != null && _notes!.isNotEmpty) 'notes': _notes,
-        },
+        ApiConstants.createBooking, // POST /bookings
+        data: requestBody,
       );
       
+      print('🔵 [BOOKING] Response status: ${response.statusCode}');
+      print('🔵 [BOOKING] Response data: ${response.data}');
+      
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _createdBooking = BookingModel.fromJson(response.data);
-        _isLoading = false;
-        notifyListeners();
-        return true;
+        try {
+          _createdBooking = BookingModel.fromJson(response.data);
+          print('✅ [BOOKING] Booking created successfully!');
+          print('✅ [BOOKING] Booking ID: ${_createdBooking!.id}');
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        } catch (e) {
+          print('❌ [BOOKING] Error parsing booking response: $e');
+          _errorMessage = 'Failed to parse booking response: $e';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
       } else {
         final data = response.data;
         _errorMessage = data['message'] ?? 'Failed to create booking';
+        print('❌ [BOOKING] Failed to create booking: $_errorMessage');
         _isLoading = false;
         notifyListeners();
         return false;
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ [BOOKING] Exception creating booking: $e');
+      print('❌ [BOOKING] Stack trace: $stackTrace');
       _errorMessage = _extractErrorMessage(e);
       _isLoading = false;
       notifyListeners();

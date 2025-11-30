@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/route_constants.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/helpers.dart';
@@ -24,6 +26,9 @@ class BookingDetailsPage extends StatefulWidget {
 
 class _BookingDetailsPageState extends State<BookingDetailsPage> {
   BookingModel? _booking;
+  bool _isLoading = true;
+  String? _errorMessage;
+  final ApiClient _apiClient = ApiClient();
 
   @override
   void initState() {
@@ -31,24 +36,110 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
     _loadBooking();
   }
 
-  void _loadBooking() {
-    final homeProvider = context.read<HomeProvider>();
+  Future<void> _loadBooking() async {
+    print('🔵 [BOOKING_DETAILS] Loading booking with ID: ${widget.bookingId}');
+    
+    // Validate booking ID
+    if (widget.bookingId.isEmpty || widget.bookingId == 'create' || widget.bookingId.contains('create')) {
+      print('❌ [BOOKING_DETAILS] Invalid booking ID: ${widget.bookingId}');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Invalid booking ID';
+      });
+      return;
+    }
+    
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      _booking = homeProvider.bookings.firstWhere(
-        (b) => b.id == widget.bookingId,
-      );
-      setState(() {});
-    } catch (e) {
-      // Booking not found in list, might need to fetch from API
-      homeProvider.fetchBookings().then((_) {
+      // First try to get from local list
+      final homeProvider = context.read<HomeProvider>();
+      try {
+        _booking = homeProvider.bookings.firstWhere(
+          (b) => b.id == widget.bookingId,
+        );
+        print('✅ [BOOKING_DETAILS] Found booking in local list');
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      } catch (e) {
+        print('🔵 [BOOKING_DETAILS] Booking not in local list, fetching from API...');
+        // Not in list, fetch from API
+      }
+
+      // Fetch directly from API
+      final endpoint = ApiConstants.bookingDetails.replaceAll('{id}', widget.bookingId);
+      print('🔵 [BOOKING_DETAILS] Fetching from endpoint: $endpoint');
+      
+      final response = await _apiClient.get(endpoint);
+      
+      print('🔵 [BOOKING_DETAILS] Response status: ${response.statusCode}');
+      print('🔵 [BOOKING_DETAILS] Response data type: ${response.data.runtimeType}');
+      print('🔵 [BOOKING_DETAILS] Response data: ${response.data}');
+      
+      if (response.statusCode == 200) {
         try {
-          _booking = homeProvider.bookings.firstWhere(
-            (b) => b.id == widget.bookingId,
-          );
-          setState(() {});
-        } catch (e) {
-          // Still not found
+          // Check if this is the ignored response from interceptor
+          if (response.data is Map && (response.data as Map)['ignored'] == true) {
+            print('⚠️ [BOOKING_DETAILS] Received ignored response, booking not found');
+            setState(() {
+              _isLoading = false;
+              _errorMessage = 'Booking not found. Please try again.';
+            });
+            return;
+          }
+          
+          // Ensure response.data is a Map
+          final data = response.data is Map<String, dynamic> 
+              ? response.data 
+              : response.data as Map<String, dynamic>;
+          
+          // Validate that this is actually a booking response
+          if (!data.containsKey('id') || data['id'] == null) {
+            print('❌ [BOOKING_DETAILS] Invalid booking response: missing ID');
+            setState(() {
+              _isLoading = false;
+              _errorMessage = 'Invalid booking data received';
+            });
+            return;
+          }
+          
+          print('🔵 [BOOKING_DETAILS] Parsing booking data...');
+          print('🔵 [BOOKING_DETAILS] Booking ID in response: ${data['id']}');
+          print('🔵 [BOOKING_DETAILS] User ID in response: ${data['userId']}');
+          print('🔵 [BOOKING_DETAILS] Service ID in response: ${data['serviceId']}');
+          print('🔵 [BOOKING_DETAILS] Status in response: ${data['status']}');
+          
+          _booking = BookingModel.fromJson(data);
+          print('✅ [BOOKING_DETAILS] Booking loaded successfully');
+          setState(() {
+            _isLoading = false;
+          });
+        } catch (e, stackTrace) {
+          print('❌ [BOOKING_DETAILS] Error parsing booking: $e');
+          print('❌ [BOOKING_DETAILS] Stack trace: $stackTrace');
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Failed to parse booking data: ${e.toString()}';
+          });
         }
+      } else {
+        print('❌ [BOOKING_DETAILS] Failed to load booking. Status: ${response.statusCode}');
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Failed to load booking details';
+        });
+      }
+    } catch (e, stackTrace) {
+      print('❌ [BOOKING_DETAILS] Exception loading booking: $e');
+      print('❌ [BOOKING_DETAILS] Stack trace: $stackTrace');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Booking not found. Please try again.';
       });
     }
   }
@@ -84,10 +175,44 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_booking == null) {
+    if (_isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('Booking Details')),
         body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_booking == null || _errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Booking Details')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage ?? 'Booking not found',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              PrimaryButton(
+                text: 'Retry',
+                onPressed: _loadBooking,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () => context.pop(),
+                child: const Text('Go Back'),
+              ),
+            ],
+          ),
+        ),
       );
     }
 

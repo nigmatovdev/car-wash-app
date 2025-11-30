@@ -67,18 +67,20 @@ class AppRouter {
         path: RouteConstants.bookings,
         builder: (context, state) => const MyBookingsPage(),
       ),
-      GoRoute(
-        path: RouteConstants.bookingDetails,
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return BookingDetailsPage(bookingId: id);
-        },
-      ),
+      // IMPORTANT: createBooking must come BEFORE bookingDetails to avoid route conflict
+      // Otherwise /bookings/create matches /bookings/:id with id="create"
       GoRoute(
         path: RouteConstants.createBooking,
         builder: (context, state) {
           final serviceId = state.uri.queryParameters['serviceId'];
           return CreateBookingPage(serviceId: serviceId);
+        },
+      ),
+      GoRoute(
+        path: RouteConstants.bookingDetails,
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return BookingDetailsPage(bookingId: id);
         },
       ),
       GoRoute(

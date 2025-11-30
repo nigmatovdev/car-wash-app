@@ -14,7 +14,7 @@ class ApiConstants {
   // User Endpoints
   static const String userProfile = '/users/profile';
   static const String userMe = '/users/me';
-  static const String updateProfile = '/users/profile';
+  static const String updateProfile = '/users/me';
   static const String changePassword = '/users/change-password';
   
   // Services Endpoints
@@ -24,7 +24,7 @@ class ApiConstants {
   // Bookings Endpoints
   static const String bookings = '/bookings';
   static const String bookingDetails = '/bookings/{id}';
-  static const String createBooking = '/bookings';
+  static const String createBooking = '/bookings'; // POST /bookings
   static const String cancelBooking = '/bookings/{id}/cancel';
   static const String updateBooking = '/bookings/{id}';
   

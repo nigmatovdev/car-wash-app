@@ -28,6 +28,16 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
   int _currentStep = 1;
   final int _totalSteps = 4;
 
+  @override
+  void initState() {
+    super.initState();
+    // Clear any previous booking data when page loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+      bookingProvider.clear();
+    });
+  }
+
   void _nextStep() {
     if (_currentStep < _totalSteps) {
       setState(() {
@@ -63,18 +73,36 @@ class _CreateBookingPageState extends State<CreateBookingPage> {
   }
 
   Future<void> _confirmBooking() async {
+    print('🔵 [CREATE_BOOKING] Starting booking confirmation...');
     final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+    
+    print('🔵 [CREATE_BOOKING] Service: ${bookingProvider.selectedService?.id}');
+    print('🔵 [CREATE_BOOKING] Date: ${bookingProvider.selectedDate}');
+    print('🔵 [CREATE_BOOKING] Time: ${bookingProvider.selectedTimeSlot}');
+    print('🔵 [CREATE_BOOKING] Location: ${bookingProvider.selectedLatitude}, ${bookingProvider.selectedLongitude}');
     
     final success = await bookingProvider.createBooking();
     
-    if (!mounted) return;
+    if (!mounted) {
+      print('⚠️ [CREATE_BOOKING] Widget not mounted, returning');
+      return;
+    }
 
     if (success) {
-      // Navigate to booking confirmation
+      print('✅ [CREATE_BOOKING] Booking created successfully!');
       final bookingId = bookingProvider.createdBooking!.id;
+      print('✅ [CREATE_BOOKING] Booking ID: $bookingId');
+      print('🔵 [CREATE_BOOKING] Navigating to confirmation page...');
+      
+      // Refresh bookings list to include the new booking
+      final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+      homeProvider.fetchBookings();
+      
+      // Navigate to booking confirmation
       context.pushReplacement(RouteConstants.bookingConfirmationPath(bookingId));
     } else {
       final error = bookingProvider.errorMessage;
+      print('❌ [CREATE_BOOKING] Booking failed: $error');
       if (error != null) {
         Helpers.showErrorSnackBar(context, error);
       }
