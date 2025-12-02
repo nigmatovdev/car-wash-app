@@ -18,6 +18,7 @@ class BookingModel {
   final String serviceId;
   final ServiceModel? service;
   final UserModel? user;
+  final UserModel? washer; // Washer assigned to this booking
   final DateTime scheduledDate;
   final String? address;
   final double? latitude;
@@ -34,6 +35,7 @@ class BookingModel {
     required this.serviceId,
     this.service,
     this.user,
+    this.washer,
     required this.scheduledDate,
     this.address,
     this.latitude,
@@ -104,6 +106,9 @@ class BookingModel {
             : null,
         user: json['user'] != null
             ? UserModel.fromJson(json['user'] as Map<String, dynamic>)
+            : null,
+        washer: json['washer'] != null
+            ? UserModel.fromJson(json['washer'] as Map<String, dynamic>)
             : null,
         scheduledDate: scheduledDate,
         address: json['address'] as String?,
@@ -187,6 +192,7 @@ class BookingModel {
       'serviceId': serviceId,
       'service': service?.toJson(),
       'user': user?.toJson(),
+      'washer': washer?.toJson(),
       'scheduledDate': scheduledDate.toIso8601String(),
       'address': address,
       'latitude': latitude,
@@ -205,6 +211,7 @@ class BookingModel {
     String? serviceId,
     ServiceModel? service,
     UserModel? user,
+    UserModel? washer,
     DateTime? scheduledDate,
     String? address,
     double? latitude,
@@ -221,6 +228,7 @@ class BookingModel {
       serviceId: serviceId ?? this.serviceId,
       service: service ?? this.service,
       user: user ?? this.user,
+      washer: washer ?? this.washer,
       scheduledDate: scheduledDate ?? this.scheduledDate,
       address: address ?? this.address,
       latitude: latitude ?? this.latitude,

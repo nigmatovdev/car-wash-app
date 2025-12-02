@@ -8,6 +8,8 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../core/models/booking_model.dart';
+import '../../../../shared/services/notification_service.dart';
+import '../../../../core/models/user_model.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/dialogs/confirm_dialog.dart';
 import '../../../../shared/widgets/map/maplibre_widget.dart';
@@ -218,6 +220,11 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
         
         if (mounted) {
           Helpers.showSuccessSnackBar(context, 'Booking deleted successfully');
+          NotificationService.showNotification(
+            id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            title: 'Booking deleted',
+            body: 'Your cancelled booking has been removed.',
+          );
           // Navigate back after a short delay
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) {
@@ -312,6 +319,11 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
         
         if (mounted) {
           Helpers.showSuccessSnackBar(context, 'Booking cancelled successfully');
+          NotificationService.showNotification(
+            id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            title: 'Booking cancelled',
+            body: 'Your booking has been cancelled successfully.',
+          );
         }
       } else {
         throw Exception('Failed to cancel booking: ${response.statusCode}');
@@ -578,63 +590,65 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                     ),
                   ],
 
-                  // Washer Info (if assigned)
+                  // Customer Info
                   if (booking.user != null) ...[
                     const SizedBox(height: 24),
                     _buildSection(
                       context,
-                      'Washer Information',
+                      'Customer Information',
                       [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 30,
-                              backgroundImage: booking.user!.avatar != null
-                                  ? NetworkImage(booking.user!.avatar!)
-                                  : null,
-                              child: booking.user!.avatar == null
-                                  ? Text(
-                                      booking.user!.fullName[0].toUpperCase(),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    booking.user!.fullName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
+                        _buildUserCard(
+                          context,
+                          booking.user!,
+                          showContact: false, // Customer viewing their own booking
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  // Washer Info (if assigned)
+                  if (booking.washer != null) ...[
+                    const SizedBox(height: 24),
+                    _buildSection(
+                      context,
+                      'Assigned Washer',
+                      [
+                        _buildUserCard(
+                          context,
+                          booking.washer!,
+                          showContact: true,
+                        ),
+                      ],
+                    ),
+                  ] else if (booking.status != BookingStatus.pending && 
+                             booking.status != BookingStatus.cancelled) ...[
+                    const SizedBox(height: 24),
+                    _buildSection(
+                      context,
+                      'Assigned Washer',
+                      [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, color: AppColors.warning),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Washer information will be available once assigned',
+                                  style: TextStyle(
+                                    color: AppColors.warning,
+                                    fontSize: 14,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    booking.user!.phone ?? 'No phone',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.phone),
-                              onPressed: () {
-                                // TODO: Implement phone call
-                                Helpers.showSnackBar(
-                                  context,
-                                  'Call functionality coming soon!',
-                                );
-                              },
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -660,6 +674,55 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
                           'Service Price',
                           Formatters.formatCurrency(booking.service!.price),
                           Icons.local_car_wash,
+                        ),
+                      ],
+                    ],
+                  ),
+
+                  // Booking Metadata
+                  const SizedBox(height: 24),
+                  _buildSection(
+                    context,
+                    'Booking Information',
+                    [
+                      _buildInfoCard(
+                        context,
+                        'Booking ID',
+                        booking.id,
+                        Icons.tag,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildInfoCard(
+                        context,
+                        'Status',
+                        _getStatusText(booking.status),
+                        Icons.info,
+                      ),
+                      if (booking.createdAt != null) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          context,
+                          'Created At',
+                          Formatters.formatDisplayDateTime(booking.createdAt!),
+                          Icons.calendar_today,
+                        ),
+                      ],
+                      if (booking.updatedAt != null) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          context,
+                          'Last Updated',
+                          Formatters.formatDisplayDateTime(booking.updatedAt!),
+                          Icons.update,
+                        ),
+                      ],
+                      if (booking.latitude != null && booking.longitude != null) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoCard(
+                          context,
+                          'Coordinates',
+                          '${booking.latitude!.toStringAsFixed(6)}, ${booking.longitude!.toStringAsFixed(6)}',
+                          Icons.location_on,
                         ),
                       ],
                     ],
@@ -818,6 +881,109 @@ class _BookingDetailsPageState extends State<BookingDetailsPage> {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUserCard(
+    BuildContext context,
+    UserModel user, {
+    bool showContact = true,
+  }) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundImage: user.avatar != null
+                  ? NetworkImage(user.avatar!)
+                  : null,
+              child: user.avatar == null
+                  ? Text(
+                      user.fullName.isNotEmpty
+                          ? user.fullName[0].toUpperCase()
+                          : 'U',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                        fontSize: 20,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.fullName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    user.email,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (user.phone != null && user.phone!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.phone, size: 14, color: AppColors.textSecondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          user.phone!,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (user.role.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        user.role.toUpperCase(),
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (showContact && user.phone != null && user.phone!.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.phone),
+                color: AppColors.primary,
+                onPressed: () {
+                  // TODO: Implement phone call using url_launcher
+                  Helpers.showSnackBar(
+                    context,
+                    'Call functionality coming soon!',
+                  );
+                },
+              ),
+          ],
         ),
       ],
     );

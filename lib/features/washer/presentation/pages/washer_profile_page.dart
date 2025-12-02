@@ -204,6 +204,13 @@ class _WasherProfilePageState extends State<WasherProfilePage> {
                       },
                     ),
                     _MenuItem(
+                      icon: Icons.location_searching,
+                      title: 'Location Tracking',
+                      onTap: () {
+                        context.push(RouteConstants.washerLocationTracker);
+                      },
+                    ),
+                    _MenuItem(
                       icon: Icons.settings_outlined,
                       title: 'Settings',
                       onTap: () {

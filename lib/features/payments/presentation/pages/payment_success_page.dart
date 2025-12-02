@@ -8,6 +8,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../core/models/payment_model.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/services/notification_service.dart';
 
 class PaymentSuccessPage extends StatefulWidget {
   final String paymentId;
@@ -34,6 +35,13 @@ class _PaymentSuccessPageState extends State<PaymentSuccessPage> {
   void initState() {
     super.initState();
     _loadPayment();
+
+    // Fire a local notification for payment success
+    NotificationService.showNotification(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: 'Payment successful',
+      body: 'Your payment has been completed.',
+    );
   }
 
   Future<void> _loadPayment() async {

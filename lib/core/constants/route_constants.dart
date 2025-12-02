@@ -49,6 +49,7 @@ class RouteConstants {
   static String washerBookingDetailsPath(String id) => '/washer/bookings/$id';
   static const String washerProfile = '/washer/profile';
   static const String washerHistory = '/washer/history';
+  static const String washerLocationTracker = '/washer/location-tracker';
   
   // Settings
   static const String settings = '/settings';

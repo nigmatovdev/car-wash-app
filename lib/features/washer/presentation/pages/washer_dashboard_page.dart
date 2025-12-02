@@ -75,9 +75,19 @@ class _WasherDashboardPageState extends State<WasherDashboardPage> {
                         
                         const SizedBox(height: 24),
                         
-                        // Active Bookings
+                        // Active Bookings (Accepted/Assigned bookings that are in progress)
                         _buildSectionHeader('Active Bookings', provider.activeBookings.length),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            'Accepted bookings that are in progress',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                          ),
+                        ),
                         if (provider.activeBookings.isEmpty)
                           _buildEmptyState('No active bookings', Icons.event_busy)
                         else
@@ -110,6 +120,16 @@ class _WasherDashboardPageState extends State<WasherDashboardPage> {
                           ),
                         
                         const SizedBox(height: 24),
+                        
+                        // Recently Completed Bookings
+                        if (provider.completedBookings.isNotEmpty) ...[
+                          _buildSectionHeader('Recently Completed', provider.completedBookings.length),
+                          const SizedBox(height: 12),
+                          ...provider.completedBookings.map((booking) => 
+                            _buildCompletedBookingCard(booking, provider)
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                       ],
                     ),
                   ),
@@ -152,7 +172,7 @@ class _WasherDashboardPageState extends State<WasherDashboardPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            Formatters.formatCurrency(stats.earningsToday),
+            Formatters.formatCurrency(stats.totalEarnings),
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -438,6 +458,112 @@ class _WasherDashboardPageState extends State<WasherDashboardPage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompletedBookingCard(BookingModel booking, WasherProvider provider) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: AppColors.success.withOpacity(0.05),
+      child: InkWell(
+        onTap: () {
+          context.push(RouteConstants.washerBookingDetailsPath(booking.id));
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (booking.service != null)
+                          Text(
+                            booking.service!.name,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        const SizedBox(height: 4),
+                        Text(
+                          Formatters.formatDateTime(booking.scheduledDate),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle, size: 16, color: AppColors.success),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Completed',
+                          style: TextStyle(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (booking.address != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        booking.address!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Earned',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                  Text(
+                    Formatters.formatCurrency(booking.totalAmount),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.success,
+                        ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

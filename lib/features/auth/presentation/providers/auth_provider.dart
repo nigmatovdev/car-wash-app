@@ -123,6 +123,15 @@ class AuthProvider extends ChangeNotifier {
           }
         }
         
+        // Fetch complete user profile (including balance) after login
+        // This ensures we have the latest balance and all user data
+        try {
+          await getCurrentUser();
+        } catch (e) {
+          // If getCurrentUser fails, continue with login data
+          print('Warning: Could not fetch full user profile after login: $e');
+        }
+        
         _isLoading = false;
         notifyListeners();
         return true;

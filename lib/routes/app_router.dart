@@ -24,6 +24,7 @@ import '../../features/washer/presentation/pages/washer_dashboard_page.dart';
 import '../../features/washer/presentation/pages/washer_booking_details_page.dart';
 import '../../features/washer/presentation/pages/washer_profile_page.dart';
 import '../../features/washer/presentation/pages/washer_history_page.dart';
+import '../../features/washer/presentation/pages/washer_location_tracker_page.dart';
 import 'route_guards.dart';
 
 class AppRouter {
@@ -166,6 +167,10 @@ class AppRouter {
       GoRoute(
         path: RouteConstants.washerHistory,
         builder: (context, state) => const WasherHistoryPage(),
+      ),
+      GoRoute(
+        path: RouteConstants.washerLocationTracker,
+        builder: (context, state) => const WasherLocationTrackerPage(),
       ),
     ],
   );

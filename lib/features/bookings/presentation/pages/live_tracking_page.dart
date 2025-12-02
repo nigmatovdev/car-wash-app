@@ -1,10 +1,17 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+import '../../../../core/constants/api_constants.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../home/presentation/providers/home_provider.dart';
 import '../../../../core/models/booking_model.dart';
+import '../../../../shared/widgets/map/maplibre_widget.dart';
 
 class LiveTrackingPage extends StatefulWidget {
   final String bookingId;
@@ -20,11 +27,25 @@ class LiveTrackingPage extends StatefulWidget {
 
 class _LiveTrackingPageState extends State<LiveTrackingPage> {
   BookingModel? _booking;
+  WebSocketChannel? _channel;
+  StreamSubscription? _wsSubscription;
+  double? _washerLat;
+  double? _washerLng;
+  String? _statusMessage;
+  final GlobalKey<MapLibreWidgetState> _mapKey =
+      GlobalKey<MapLibreWidgetState>();
 
   @override
   void initState() {
     super.initState();
     _loadBooking();
+  }
+
+  @override
+  void dispose() {
+    _wsSubscription?.cancel();
+    _channel?.sink.close();
+    super.dispose();
   }
 
   void _loadBooking() {
@@ -34,6 +55,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
         (b) => b.id == widget.bookingId,
       );
       setState(() {});
+      _connectWebSocket();
     } catch (e) {
       homeProvider.fetchBookings().then((_) {
         try {
@@ -41,9 +63,64 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
             (b) => b.id == widget.bookingId,
           );
           setState(() {});
+          _connectWebSocket();
         } catch (e) {
           // Still not found
         }
+      });
+    }
+  }
+
+  void _connectWebSocket() {
+    if (_booking == null) return;
+
+    try {
+      final uri = Uri.parse('${ApiConstants.wsUrl}/ws/location');
+      _channel = WebSocketChannel.connect(uri);
+
+      _wsSubscription = _channel!.stream.listen((event) {
+        try {
+          final data = jsonDecode(event as String);
+          if (data is Map &&
+              data['event'] == 'washer:locationUpdated' &&
+              data['data'] is Map) {
+            final eventData = data['data'] as Map;
+
+            // Optional: filter by bookingId if provided in payload
+            if (eventData['bookingId'] != null &&
+                eventData['bookingId'] != widget.bookingId) {
+              return;
+            }
+
+            final lat = (eventData['latitude'] as num?)?.toDouble();
+            final lng = (eventData['longitude'] as num?)?.toDouble();
+            if (lat != null && lng != null) {
+              setState(() {
+                _washerLat = lat;
+                _washerLng = lng;
+                _statusMessage = 'Washer is on the way';
+              });
+
+              // Move map marker to new washer location
+              _mapKey.currentState?.updateSelectedMarker(lat, lng);
+              _mapKey.currentState?.moveCamera(lat, lng, zoom: 15.5);
+            }
+          }
+        } catch (_) {
+          // Ignore JSON / parsing errors
+        }
+      }, onError: (error) {
+        setState(() {
+          _statusMessage = 'Disconnected from live tracking';
+        });
+      });
+
+      setState(() {
+        _statusMessage = 'Connected to live tracking';
+      });
+    } catch (e) {
+      setState(() {
+        _statusMessage = 'Unable to connect to live tracking';
       });
     }
   }
@@ -65,38 +142,27 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
       ),
       body: Stack(
         children: [
-          // Map View (Placeholder)
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: AppColors.primary.withOpacity(0.1),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.map, size: 80, color: AppColors.primary),
-                  SizedBox(height: 16),
-                  Text(
-                    'Live Map Tracking',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
+          // Map View
+          Positioned.fill(
+            child: MapLibreWidget(
+              key: _mapKey,
+              initialLatitude: booking.latitude,
+              initialLongitude: booking.longitude,
+              initialZoom: 14.5,
+              enableMarkerOnTap: false,
+              enableMarkerOnLongPress: false,
+              markers: [
+                if (booking.latitude != null && booking.longitude != null)
+                  MapMarker(
+                    latitude: booking.latitude!,
+                    longitude: booking.longitude!,
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Map integration coming soon',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+              ],
+              showMyLocationButton: false,
             ),
           ),
 
-          // ETA Display (Top)
+          // ETA / status Display (Top)
           Positioned(
             top: 16,
             left: 16,
@@ -120,7 +186,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Estimated Arrival',
+                        'Washer Status',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -128,9 +194,9 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '15 minutes',
+                        _statusMessage ?? 'Waiting for live location...',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
                         ),

@@ -6,6 +6,7 @@ class UserModel {
   final String? phone;
   final String? avatar;
   final String role;
+  final double? creditBalance;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   
@@ -17,6 +18,7 @@ class UserModel {
     this.phone,
     this.avatar,
     required this.role,
+    this.creditBalance,
     this.createdAt,
     this.updatedAt,
   });
@@ -40,6 +42,7 @@ class UserModel {
       phone: userData['phone'] as String?,
       avatar: userData['avatar'] as String?,
       role: userData['role'] as String? ?? 'user',
+      creditBalance: _parseCreditBalance(userData),
       createdAt: userData['createdAt'] != null
           ? DateTime.parse(userData['createdAt'] as String)
           : null,
@@ -58,6 +61,7 @@ class UserModel {
       'phone': phone,
       'avatar': avatar,
       'role': role,
+      'creditBalance': creditBalance,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -71,6 +75,7 @@ class UserModel {
     String? phone,
     String? avatar,
     String? role,
+    double? creditBalance,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -82,9 +87,24 @@ class UserModel {
       phone: phone ?? this.phone,
       avatar: avatar ?? this.avatar,
       role: role ?? this.role,
+      creditBalance: creditBalance ?? this.creditBalance,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
+  }
+
+  static double? _parseCreditBalance(Map<String, dynamic> userData) {
+    try {
+      if (userData['creditBalance'] != null) {
+        return (userData['creditBalance'] as num).toDouble();
+      }
+      if (userData['balance'] != null) {
+        return (userData['balance'] as num).toDouble();
+      }
+    } catch (_) {
+      // Ignore parse errors, treat as null
+    }
+    return null;
   }
 }
 
