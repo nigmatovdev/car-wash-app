@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/route_constants.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../core/models/booking_model.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
+import '../../../home/presentation/providers/home_provider.dart';
 import '../providers/profile_provider.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -21,6 +23,56 @@ class _ProfilePageState extends State<ProfilePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProfileProvider>().fetchUserProfile();
     });
+  }
+
+  void _navigateToTracking(BuildContext context) {
+    final homeProvider = context.read<HomeProvider>();
+    
+    // Check if there's an active booking
+    BookingModel? bookingToTrack = homeProvider.activeBooking;
+    
+    // If no active booking, check all bookings for any that can be tracked
+    if (bookingToTrack == null) {
+      final bookings = homeProvider.bookings;
+      try {
+        bookingToTrack = bookings.firstWhere(
+          (b) => b.status != BookingStatus.completed && 
+                 b.status != BookingStatus.cancelled &&
+                 (b.washer != null || b.status == BookingStatus.assigned ||
+                  b.status == BookingStatus.enRoute || 
+                  b.status == BookingStatus.arrived ||
+                  b.status == BookingStatus.inProgress),
+        );
+      } catch (e) {
+        bookingToTrack = null;
+      }
+    }
+    
+    if (bookingToTrack != null) {
+      // Navigate to tracking page with booking ID
+      context.push(RouteConstants.locationPath(bookingToTrack.id));
+    } else {
+      // No trackable bookings - still allow navigation for demo mode
+      // Use the most recent booking if available, or navigate without bookingId
+      final recentBooking = homeProvider.bookings.isNotEmpty 
+          ? homeProvider.bookings.first 
+          : null;
+      
+      if (recentBooking != null) {
+        context.push(RouteConstants.locationPath(recentBooking.id));
+        Helpers.showSnackBar(
+          context,
+          'No active tracking available. Demo mode will be available.',
+        );
+      } else {
+        // No bookings at all - navigate to location page
+        context.push(RouteConstants.location);
+        Helpers.showSnackBar(
+          context,
+          'No bookings found. Create a booking to track your washer.',
+        );
+      }
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -174,6 +226,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         icon: Icons.book_outlined,
                         title: 'My Bookings',
                         onTap: () => context.push(RouteConstants.bookings),
+                      ),
+                      _MenuItem(
+                        icon: Icons.my_location,
+                        title: 'Track Washer',
+                        onTap: () => _navigateToTracking(context),
                       ),
                       _MenuItem(
                         icon: Icons.payment_outlined,

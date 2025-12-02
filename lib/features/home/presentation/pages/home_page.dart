@@ -91,6 +91,13 @@ class _HomePageState extends State<HomePage> {
                 SliverToBoxAdapter(
                   child: QuickActions(
                     hasActiveBooking: homeProvider.activeBooking != null,
+                    onTrackWasher: homeProvider.activeBooking != null
+                        ? () {
+                            context.push(RouteConstants.locationPath(
+                              homeProvider.activeBooking!.id,
+                            ));
+                          }
+                        : null,
                   ),
                 ),
 

@@ -29,11 +29,16 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
   BookingModel? _booking;
   WebSocketChannel? _channel;
   StreamSubscription? _wsSubscription;
-  double? _washerLat;
-  double? _washerLng;
   String? _statusMessage;
   final GlobalKey<MapLibreWidgetState> _mapKey =
       GlobalKey<MapLibreWidgetState>();
+  
+  // Demo mode
+  bool _isDemoMode = false;
+  Timer? _demoTimer;
+  double? _demoWasherLat;
+  double? _demoWasherLng;
+  int _demoStep = 0;
 
   @override
   void initState() {
@@ -45,6 +50,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
   void dispose() {
     _wsSubscription?.cancel();
     _channel?.sink.close();
+    _demoTimer?.cancel();
     super.dispose();
   }
 
@@ -55,6 +61,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
         (b) => b.id == widget.bookingId,
       );
       setState(() {});
+      _initializeMapMarkers();
       _connectWebSocket();
     } catch (e) {
       homeProvider.fetchBookings().then((_) {
@@ -63,6 +70,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
             (b) => b.id == widget.bookingId,
           );
           setState(() {});
+          _initializeMapMarkers();
           _connectWebSocket();
         } catch (e) {
           // Still not found
@@ -70,9 +78,21 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
       });
     }
   }
+  
+  void _initializeMapMarkers() {
+    // Add destination marker (booking location) after map is ready
+    if (_booking?.latitude != null && _booking?.longitude != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapKey.currentState?.addDestinationMarker(
+          _booking!.latitude!,
+          _booking!.longitude!,
+        );
+      });
+    }
+  }
 
   void _connectWebSocket() {
-    if (_booking == null) return;
+    if (_booking == null || _isDemoMode) return;
 
     try {
       final uri = Uri.parse('${ApiConstants.wsUrl}/ws/location');
@@ -95,15 +115,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
             final lat = (eventData['latitude'] as num?)?.toDouble();
             final lng = (eventData['longitude'] as num?)?.toDouble();
             if (lat != null && lng != null) {
-              setState(() {
-                _washerLat = lat;
-                _washerLng = lng;
-                _statusMessage = 'Washer is on the way';
-              });
-
-              // Move map marker to new washer location
-              _mapKey.currentState?.updateSelectedMarker(lat, lng);
-              _mapKey.currentState?.moveCamera(lat, lng, zoom: 15.5);
+              _updateWasherLocation(lat, lng);
             }
           }
         } catch (_) {
@@ -124,6 +136,132 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
       });
     }
   }
+  
+  void _updateWasherLocation(double lat, double lng) {
+    setState(() {
+      _statusMessage = 'Washer is on the way';
+    });
+
+    // Update washer marker (will replace existing washer marker)
+    _mapKey.currentState?.addWasherMarker(lat, lng);
+    
+    // Ensure destination marker is still present
+    if (_booking?.latitude != null && _booking?.longitude != null) {
+      _mapKey.currentState?.addDestinationMarker(
+        _booking!.latitude!,
+        _booking!.longitude!,
+      );
+    }
+    
+    // Center map between washer and destination
+    if (_booking?.latitude != null && _booking?.longitude != null) {
+      final centerLat = (lat + _booking!.latitude!) / 2;
+      final centerLng = (lng + _booking!.longitude!) / 2;
+      _mapKey.currentState?.moveCamera(centerLat, centerLng, zoom: 14.0);
+    } else {
+      _mapKey.currentState?.moveCamera(lat, lng, zoom: 15.5);
+    }
+  }
+  
+  void _startDemoMode() {
+    if (_booking?.latitude == null || _booking?.longitude == null) {
+      Helpers.showSnackBar(context, 'Booking location not available for demo');
+      return;
+    }
+
+    setState(() {
+      _isDemoMode = true;
+      _statusMessage = 'Demo Mode: Simulating washer movement';
+      _demoStep = 0;
+    });
+
+    // Close WebSocket connection if open
+    _wsSubscription?.cancel();
+    _channel?.sink.close();
+    _channel = null;
+    _wsSubscription = null;
+
+    // Set starting position (slightly offset from destination for demo)
+    final destLat = _booking!.latitude!;
+    final destLng = _booking!.longitude!;
+    
+    // Start from a point ~2km away (simulating washer starting location)
+    _demoWasherLat = destLat + 0.018; // ~2km north
+    _demoWasherLng = destLng + 0.018; // ~2km east
+    
+    // Add initial washer marker
+    _mapKey.currentState?.addWasherMarker(_demoWasherLat!, _demoWasherLng!);
+    
+    // Center map between washer and destination
+    final centerLat = (_demoWasherLat! + destLat) / 2;
+    final centerLng = (_demoWasherLng! + destLng) / 2;
+    _mapKey.currentState?.moveCamera(centerLat, centerLng, zoom: 13.0);
+
+    // Start simulation timer (update every 2 seconds)
+    _demoTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      _demoStep++;
+      
+      // Calculate progress (0.0 to 1.0)
+      final progress = (_demoStep / 30).clamp(0.0, 1.0); // 30 steps = ~60 seconds
+      
+      // Interpolate position
+      final currentLat = _demoWasherLat! + (destLat - _demoWasherLat!) * progress;
+      final currentLng = _demoWasherLng! + (destLng - _demoWasherLng!) * progress;
+      
+      // Update status message based on progress
+      String statusMsg;
+      if (progress < 0.3) {
+        statusMsg = 'Demo: Washer is on the way';
+      } else if (progress < 0.7) {
+        statusMsg = 'Demo: Washer is approaching';
+      } else if (progress < 0.95) {
+        statusMsg = 'Demo: Washer is nearby';
+      } else {
+        statusMsg = 'Demo: Washer has arrived';
+        timer.cancel();
+      }
+      
+      setState(() {
+        _statusMessage = statusMsg;
+      });
+      
+      // Update washer marker position (replaces existing washer marker)
+      _mapKey.currentState?.addWasherMarker(currentLat, currentLng);
+      
+      // Ensure destination marker is still present
+      _mapKey.currentState?.addDestinationMarker(destLat, destLng);
+      
+      // Center map between washer and destination
+      final centerLat = (currentLat + destLat) / 2;
+      final centerLng = (currentLng + destLng) / 2;
+      _mapKey.currentState?.moveCamera(centerLat, centerLng, zoom: 14.0);
+    });
+  }
+  
+  void _stopDemoMode() {
+    _demoTimer?.cancel();
+    _demoTimer = null;
+    
+    setState(() {
+      _isDemoMode = false;
+      _demoWasherLat = null;
+      _demoWasherLng = null;
+      _demoStep = 0;
+      _statusMessage = 'Demo mode stopped. Connect to real tracking?';
+    });
+    
+    // Clear washer marker
+    _mapKey.currentState?.clearMarkers();
+    _initializeMapMarkers();
+    
+    // Try to reconnect to WebSocket
+    _connectWebSocket();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +277,23 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Track Washer'),
+        actions: [
+          if (!_isDemoMode)
+            IconButton(
+              icon: const Icon(Icons.play_circle_outline),
+              tooltip: 'Start Demo',
+              onPressed: _startDemoMode,
+            ),
+        ],
       ),
+      floatingActionButton: !_isDemoMode
+          ? FloatingActionButton.extended(
+              onPressed: _startDemoMode,
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Demo'),
+              backgroundColor: AppColors.warning,
+            )
+          : null,
       body: Stack(
         children: [
           // Map View
@@ -152,26 +306,31 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
               enableMarkerOnTap: false,
               enableMarkerOnLongPress: false,
               markers: [
+                // Destination marker (red pin) - booking location
                 if (booking.latitude != null && booking.longitude != null)
                   MapMarker(
                     latitude: booking.latitude!,
                     longitude: booking.longitude!,
                   ),
-              ],
+                ],
               showMyLocationButton: false,
             ),
           ),
 
-          // ETA / status Display (Top)
+          // Status Display (Top)
           Positioned(
             top: 16,
             left: 16,
             right: 16,
-            child: Container(
+            child: Column(
+              children: [
+                // Status Card
+                Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                    color: _isDemoMode ? AppColors.warning.withOpacity(0.1) : Colors.white,
                 borderRadius: BorderRadius.circular(12),
+                    border: _isDemoMode ? Border.all(color: AppColors.warning, width: 2) : null,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -179,29 +338,55 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
                   ),
                 ],
               ),
-              child: Row(
+                  child: Column(
+                    children: [
+                      Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
+                          Expanded(
+                            child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                     children: [
                       Text(
-                        'Washer Status',
+                                      'Washer Status',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
+                                    ),
+                                    if (_isDemoMode) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.warning,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          'DEMO',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _statusMessage ?? 'Waiting for live location...',
+                                  _statusMessage ?? 'Waiting for live location...',
                         style: TextStyle(
-                          fontSize: 16,
+                                    fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
                         ),
                       ),
                     ],
+                            ),
                   ),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -217,6 +402,57 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
                   ),
                 ],
               ),
+                      if (_isDemoMode) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _stopDemoMode,
+                            icon: const Icon(Icons.stop, size: 18),
+                            label: const Text('Stop Demo'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.error,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Legend
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildLegendItem(
+                        Icons.directions_car,
+                        AppColors.secondary,
+                        'Washer',
+                      ),
+                      const SizedBox(width: 16),
+                      _buildLegendItem(
+                        Icons.location_on,
+                        AppColors.error,
+                        'Destination',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -406,6 +642,32 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLegendItem(IconData icon, Color color, String label) {
+    return Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+          ),
+          child: Icon(icon, color: Colors.white, size: 14),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 

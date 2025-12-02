@@ -49,6 +49,8 @@ class MapLibreWidget extends StatefulWidget {
 class MapLibreWidgetState extends State<MapLibreWidget> {
   final MapController _mapController = MapController();
   final List<Marker> _markers = [];
+  Marker? _washerMarker;
+  Marker? _destinationMarker;
   bool _hasNetworkError = false;
 
   @override
@@ -98,18 +100,21 @@ class MapLibreWidgetState extends State<MapLibreWidget> {
     return _addMarker(latitude, longitude, iconImage: iconImage);
   }
 
-  Marker _addMarker(double latitude, double longitude, {String? iconImage}) {
+  Marker _addMarker(double latitude, double longitude, {String? iconImage, Color? markerColor, IconData? icon}) {
+    final color = markerColor ?? AppColors.error;
+    final markerIcon = icon ?? Icons.location_on;
+    
     final marker = Marker(
       point: LatLng(latitude, longitude),
       width: 40,
       height: 40,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.error,
+          color: color,
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white, width: 3),
         ),
-        child: const Icon(Icons.location_on, color: Colors.white, size: 24),
+        child: Icon(markerIcon, color: Colors.white, size: 24),
       ),
     );
     
@@ -118,6 +123,16 @@ class MapLibreWidgetState extends State<MapLibreWidget> {
     });
     
     return marker;
+  }
+  
+  /// Add a marker with custom color and icon
+  Marker? addCustomMarker(
+    double latitude,
+    double longitude, {
+    Color? color,
+    IconData? icon,
+  }) {
+    return _addMarker(latitude, longitude, markerColor: color, icon: icon);
   }
 
   /// Remove a marker
@@ -131,6 +146,8 @@ class MapLibreWidgetState extends State<MapLibreWidget> {
   void clearMarkers() {
     setState(() {
       _markers.clear();
+      _washerMarker = null;
+      _destinationMarker = null;
     });
   }
 
@@ -138,6 +155,28 @@ class MapLibreWidgetState extends State<MapLibreWidget> {
   void updateSelectedMarker(double latitude, double longitude) {
     clearMarkers();
     _addMarker(latitude, longitude);
+  }
+  
+  /// Add washer location marker (for tracking) - replaces existing washer marker
+  void addWasherMarker(double latitude, double longitude) {
+    // Remove existing washer marker if it exists
+    if (_washerMarker != null) {
+      _markers.remove(_washerMarker);
+    }
+    // Add new washer marker
+    _washerMarker = _addMarker(latitude, longitude, markerColor: AppColors.secondary, icon: Icons.directions_car);
+    setState(() {});
+  }
+  
+  /// Add destination marker (for booking location) - replaces existing destination marker
+  void addDestinationMarker(double latitude, double longitude) {
+    // Remove existing destination marker if it exists
+    if (_destinationMarker != null) {
+      _markers.remove(_destinationMarker);
+    }
+    // Add new destination marker
+    _destinationMarker = _addMarker(latitude, longitude, markerColor: AppColors.error, icon: Icons.location_on);
+    setState(() {});
   }
 
   /// Draw a polyline between points
@@ -246,24 +285,24 @@ class MapLibreWidgetState extends State<MapLibreWidget> {
             ),
           )
         else
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: LatLng(initialLat, initialLng),
-              initialZoom: widget.initialZoom,
-              onTap: widget.enableMarkerOnTap ? _onTap : null,
-              onLongPress: widget.enableMarkerOnLongPress ? _onLongPress : null,
-              interactionOptions: InteractionOptions(
-                flags: InteractiveFlag.all,
-              ),
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: LatLng(initialLat, initialLng),
+            initialZoom: widget.initialZoom,
+            onTap: widget.enableMarkerOnTap ? _onTap : null,
+            onLongPress: widget.enableMarkerOnLongPress ? _onLongPress : null,
+            interactionOptions: InteractionOptions(
+              flags: InteractiveFlag.all,
             ),
-            children: [
+          ),
+          children: [
               // OpenStreetMap tiles with error handling
               // Note: OSM recommends NOT using subdomains
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.carwash.app',
-                maxZoom: 19,
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.carwash.app',
+              maxZoom: 19,
                 errorTileCallback: (tile, error, stackTrace) {
                   // Handle tile loading errors gracefully
                   // Check if it's a network/DNS error
@@ -281,26 +320,26 @@ class MapLibreWidgetState extends State<MapLibreWidget> {
                   }
                   debugPrint('Tile loading error: $error');
                 },
+            ),
+            
+            // Polylines
+            if (widget.polyline != null)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: widget.polyline!.points,
+                    strokeWidth: widget.polyline!.width,
+                    color: _parseColor(widget.polyline!.color),
+                  ),
+                ],
               ),
-              
-              // Polylines
-              if (widget.polyline != null)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: widget.polyline!.points,
-                      strokeWidth: widget.polyline!.width,
-                      color: _parseColor(widget.polyline!.color),
-                    ),
-                  ],
-                ),
-              
-              // Markers
-              MarkerLayer(
-                markers: _markers,
-              ),
-            ],
-          ),
+            
+            // Markers
+            MarkerLayer(
+              markers: _markers,
+            ),
+          ],
+        ),
 
         // Center marker overlay (always visible at center)
         if (widget.enableMarkerOnTap || widget.enableMarkerOnLongPress)
